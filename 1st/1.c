@@ -9,7 +9,7 @@
 #include <sys/wait.h>
 
 
-
+//just smth new
        int
        main(int argc, char *argv[])
        {
