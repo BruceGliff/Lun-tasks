@@ -16,7 +16,7 @@
 
 int main(void) 
 {
-	puts("Client - writing\n");
+	puts("Client - writing");
 	
 
     char exit = '!';
@@ -45,7 +45,7 @@ int main(void)
         }
 
         fd = open(PATH, O_WRONLY);
-        puts("Open fifo\n");
+        puts("Open fifo");
 
         while(!feof(text))        
         {
@@ -61,7 +61,7 @@ int main(void)
     if (fd)
     {
         close(fd);
-        puts("Succeed!");
+        puts("Succeed!\n");
         return 0;
     }
 

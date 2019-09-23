@@ -7,11 +7,12 @@
 #include <string.h>
 
 #define EXIT 'z'
-//#define EOF 0
-
 #define MAX 256
+typedef int bool;
 
 #define PATH "/home/brucegliff/Code/Lun-tasks/Star1/fifo"
+
+#define DEBUG puts("!");fflush(NULL);
 
 int main() 
 {
@@ -22,39 +23,46 @@ int main()
     FILE * signal;
     int fd = 0;
 
+    bool IsInCharge = 0;
+    bool IsPrinted = 0;
+
     FILE * text = fopen("copyText.txt", "w");
     char buf[MAX];
 
     while (exit != EXIT)
     {   
+        sleep(1);
         memset(buf, 0, MAX);
         // TODO make thread for checking exit status
+        if (!IsInCharge)
+        {   
+            signal = fopen("signal", "r");
 
-        signal = fopen("signal", "r");
-        //printf("%d\n", signal);
-        // if fifo already exists
-        if (signal != NULL)
-        {
+            // if fifo already exists
+            if (signal != NULL)
+            {
+                fclose(signal);
+                continue;
+            }   
+
+            signal = fopen("signal", "w");
             fclose(signal);
-            continue;
         }
 
-        signal = fopen("signal", "w");
-        fclose(signal);
+        IsInCharge = 1;
 
         fd = open(PATH, O_RDONLY);
-        puts("Open fifo\n");
+        if (!IsPrinted)
+            puts("Try to open fifo");
+        
+        IsPrinted = 1;
 
         if (fd == -1)
-        {
-            
-
-
-
-
-
+        {   
+            continue;
         }
-
+        puts("Open fifo");
+        fflush(NULL);
         while(1)
         {    
             end = read(fd, buf, MAX);
@@ -72,8 +80,8 @@ int main()
 
     fclose(text);
 
-    system("rm signal");
-    system("rm fifo");
+    remove("signal");
+    remove("fifo");
 
 
 
