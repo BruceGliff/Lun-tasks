@@ -8,7 +8,7 @@
 
 #define EXIT 'z'
 #define MAX 256
-typedef int bool;
+typedef int8_t bool;
 
 #define PATH "/home/brucegliff/Code/Lun-tasks/Star1/fifo"
 
@@ -16,7 +16,23 @@ typedef int bool;
 
 int main() 
 {
-	puts("Server - reading");
+
+    // FILE * failExit = fopen("failExit", "r");
+    // if (failExit != NULL)
+    // {
+    //     fclose(failExit);
+    //     // file exists it means somebody is working or incorrect exit
+    //     system("rm failExit signal fifo");
+    // }
+    // else
+    // {
+    //     failExit = fopen("failExit", "w");
+    //     fclose(failExit);
+    //     failExit = fopen("failExit", "r");
+    // }
+    
+
+	puts("Server_delay - reading");
 
     char exit = '!';
     char end = '!';
@@ -44,9 +60,8 @@ int main()
                 fclose(signal);
                 continue;
             }   
-
+            sleep(10);
             signal = fopen("signal", "w");
-            fclose(signal);
         }
 
         IsInCharge = 1;
@@ -79,6 +94,9 @@ int main()
     }
 
     fclose(text);
+
+    if (signal)
+        fclose(signal);
 
     remove("signal");
     remove("fifo");
