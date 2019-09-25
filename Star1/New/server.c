@@ -5,16 +5,34 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
+#include <pthread.h>
 
-#define EXIT 'z'
+#define EXIT 'c'
 
 #define MAX 256
 #define PATH "/home/brucegliff/Code/Lun-tasks/Star1/fifo"
 
-
+void * ConsolStatus(void * smth)
+{
+    char button = '!';
+    while (button != EXIT)
+    {
+        button = getchar();
+    }
+    if (smth != NULL)
+    {
+        remove(smth);
+    }
+    printf("EXIT from application!\n");
+    exit(4);
+}
 
 int main(int argc, char * argv[]) 
 {
+    pthread_t UntilTransfer;
+    pthread_create(&UntilTransfer, NULL,
+                    ConsolStatus, NULL);
+
     FILE * text = NULL;
     switch (argc)
     {
@@ -61,26 +79,31 @@ int main(int argc, char * argv[])
 
     printf("Connection setup: %s\n", Connect);
 
-    char exit = '!';
+    pthread_cancel(UntilTransfer);
+    pthread_t BeforeTransfer;
+    pthread_create(&BeforeTransfer, NULL,
+                    ConsolStatus, &Connect);
+                    
     unsigned char eof = 0;
     unsigned char buf[MAX];
-    while(1 && exit != EXIT)
+    char Drop = '!';
+    while(1)
     {
         memset(buf, 1, MAX);
         int end = 0;
         end = read(LocalPipe, buf, MAX);
         unsigned char size = buf[0];
-        fflush(NULL);
         fwrite(buf+1, 1, size, text);
         fflush(text);
         if (!size)
         {
-            exit = EXIT;
+            Drop = EXIT;
             break;
         }
         if (!end)
         {
             puts("Connection lost");
+            remove(Connect);
             return 3;
         }
     }

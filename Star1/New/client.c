@@ -5,16 +5,32 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
+#include <pthread.h>
 
-#define EXIT 'z'
+#define EXIT 'c'
 
 #define MAX 256
 #define PATH "/home/brucegliff/Code/Lun-tasks/Star1/fifo"
 
 void Hash(int ID, char * connect);
 
+void * ConsolStatus(void * button)
+{
+    while (*(char*)button != EXIT)
+    {
+        *(char*)button = getchar();
+    }
+
+    printf("EXIT from application!\n");
+    exit(3);
+}
+
 int main(int argc, char * argv[])
 {   
+    char exit = '!';
+    pthread_t thread;
+    pthread_create(&thread, NULL,
+                    ConsolStatus, &exit);
     FILE * text = NULL;
     switch (argc)
     {
@@ -52,16 +68,18 @@ int main(int argc, char * argv[])
     if (transferPipe != -1)
         puts("Successfully open transfer pipe");
 
+    int LocalCode = 999;
+    int LocalPipe = 999;
+
     int succCode = write(transferPipe, Connect, 32);
 
     if (succCode == -1)
         { puts("Problem to write!. I die"); fflush(NULL); return 1; }
 
-    int LocalCode = 999;
-    int LocalPipe = 999;
+    unsigned char eof = 0;
+    unsigned char buf[MAX];
 
     puts("Creating local connection");
-
 lReconnect:
     LocalCode = mkfifo(Connect, 0600);
     LocalPipe = open(Connect, O_WRONLY);
@@ -69,10 +87,6 @@ lReconnect:
         { puts("Going try again. Removing connection..."); remove(Connect); goto lReconnect; }
 
     printf("Connection setup: %s\n", Connect);
-
-    char exit = '!';
-    unsigned char eof = 0;
-    unsigned char buf[MAX];
 
     while (exit != EXIT && !feof(text))
     {   
@@ -87,19 +101,11 @@ lReconnect:
         }
         write(LocalPipe, &eof, 1);
     }
-    
-    if (exit == EXIT)
-        { puts("EXIT"); return 0; }
 
     puts("Copy ended");
 
     return 0;
 }
-
-
-
-
-
 
 void Hash(int ID, char * connect)
 {
