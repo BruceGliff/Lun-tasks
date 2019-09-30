@@ -60,7 +60,7 @@ int main()
                 fclose(signal);
                 continue;
             }   
-            sleep(10);
+            
             signal = fopen("signal", "w");
         }
 

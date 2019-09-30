@@ -14,11 +14,18 @@
 
 void Hash(int ID, char * connect);
 
-void * ConsolStatus(void * button)
+void * ConsolStatus(void * smth)
 {
-    while (*(char*)button != EXIT)
+    char button = '!';
+
+    while (button != EXIT)
     {
-        *(char*)button = getchar();
+        button = getchar();
+    }
+
+    if (smth != NULL)
+    {
+        remove(smth);
     }
 
     printf("EXIT from application!\n");
@@ -27,10 +34,9 @@ void * ConsolStatus(void * button)
 
 int main(int argc, char * argv[])
 {   
-    char exit = '!';
-    pthread_t thread;
-    pthread_create(&thread, NULL,
-                    ConsolStatus, &exit);
+    pthread_t UntilTransfer;
+    pthread_create(&UntilTransfer, NULL,
+                    ConsolStatus, NULL);
     FILE * text = NULL;
     switch (argc)
     {
@@ -77,9 +83,10 @@ int main(int argc, char * argv[])
         { puts("Problem to write!. I die"); fflush(NULL); return 1; }
 
     unsigned char eof = 0;
-    unsigned char buf[MAX];
+    unsigned char buf[MAX + 1];
 
     puts("Creating local connection");
+    
 lReconnect:
     LocalCode = mkfifo(Connect, 0600);
     LocalPipe = open(Connect, O_WRONLY);
@@ -88,18 +95,27 @@ lReconnect:
 
     printf("Connection setup: %s\n", Connect);
 
-    while (exit != EXIT && !feof(text))
+    pthread_cancel(UntilTransfer);
+    pthread_t BeforeTransfer;
+    pthread_create(&BeforeTransfer, NULL,
+                    ConsolStatus, &Connect);
+
+    char exit_ = '!';
+    while (exit_ != EXIT && !feof(text))
     {   
         memset(buf, 0, MAX);
-        // TODO make thread for checking exit status
+
         int end = 0;
         while(!feof(text))        
         {
             end = fread(buf + 1, 1, MAX - 1, text);
             buf[0] = end;
-            write(LocalPipe, buf, MAX);
+            buf[MAX] = 1;
+            if (feof(text))
+                buf[MAX] = 127;
+            write(LocalPipe, buf, MAX + 1);
         }
-        write(LocalPipe, &eof, 1);
+        //write(LocalPipe, &eof, 1);
     }
 
     puts("Copy ended");

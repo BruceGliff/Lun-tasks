@@ -58,20 +58,24 @@ int main(int argc, char * argv[])
 	int transCode = mkfifo("transfer", 0600);
 
     int transferPipe = open("transfer", O_RDONLY);
+
     if (transferPipe != -1)
         puts("Successfully open transfer pipe");
 
+    // MAY DROP(client) 
+     sleep(10);
+    
     int succCode = 0; 
-    while (succCode == 0)
-        succCode = read(transferPipe, Connect, 32);
-    
-    if (succCode == -1)
-        { puts("Problem to write!. I die"); return 1; }
-    
+    succCode = read(transferPipe, Connect, 32);
 
+    if (succCode == -1)
+        { puts("Problem to read!. I die"); return 1; }
     
     int LocalCode = mkfifo(Connect, 0600);
-    int LocalPipe = open(Connect, O_RDONLY);
+
+    int LocalPipe = 999;
+    LocalPipe = open(Connect, O_RDONLY | O_NONBLOCK);
+
     if (LocalCode == -1 && LocalPipe == -1)
     {
         { puts("Problem to connect!. I die"); return 1; }
@@ -85,29 +89,41 @@ int main(int argc, char * argv[])
                     ConsolStatus, &Connect);
                     
     unsigned char eof = 0;
-    unsigned char buf[MAX];
-    char Drop = '!';
+    unsigned char buf[MAX + 1];
+
+    int TriesToRead = 1;
+
     while(1)
     {
-        memset(buf, 1, MAX);
-        int end = 0;
-        end = read(LocalPipe, buf, MAX);
-        unsigned char size = buf[0];
-        fwrite(buf+1, 1, size, text);
-        fflush(text);
-        if (!size)
+        if (TriesToRead > 5)
         {
-            Drop = EXIT;
-            break;
-        }
-        if (!end)
-        {
+            puts("Fail to read! Times out");
             puts("Connection lost");
             remove(Connect);
             return 3;
+
+        }
+        memset(buf, 1, MAX + 1);
+        int end = 0;
+        end = read(LocalPipe, buf, MAX + 1);
+        unsigned char size = buf[0];
+
+        if(end == 0)
+        {
+            printf("%d try to read from local pipe of 5\n", TriesToRead);
+            TriesToRead++;
+            sleep(1);
+            continue;
+        }
+
+        fwrite(buf+1, 1, size, text);
+        fflush(text);
+
+        if (buf[MAX] == 127)
+        {
+            break;
         }
     }
-
 
     remove(Connect);
 
