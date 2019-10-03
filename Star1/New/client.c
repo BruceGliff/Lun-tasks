@@ -10,7 +10,6 @@
 #define EXIT 'c'
 
 #define MAX 256
-#define PATH "/home/brucegliff/Code/Lun-tasks/Star1/fifo"
 
 void Hash(int ID, char * connect);
 

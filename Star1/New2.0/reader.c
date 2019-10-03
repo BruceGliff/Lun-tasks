@@ -10,29 +10,13 @@
 #define EXIT 'c'
 
 #define MAX 256
-#define PATH "/home/brucegliff/Code/Lun-tasks/Star1/fifo"
 
-void * ConsolStatus(void * smth)
-{
-    char button = '!';
-    while (button != EXIT)
-    {
-        button = getchar();
-    }
-    if (smth != NULL)
-    {
-        remove(smth);
-    }
-    printf("EXIT from application!\n");
-    exit(4);
-}
+
+void Hash(int ID, char * connect);
+void * ConsolStatus(void * smth);
 
 int main(int argc, char * argv[]) 
 {
-    pthread_t UntilTransfer;
-    pthread_create(&UntilTransfer, NULL,
-                    ConsolStatus, NULL);
-
     FILE * text = NULL;
     switch (argc)
     {
@@ -52,70 +36,56 @@ int main(int argc, char * argv[])
     }
     puts("Server searching connection");
 
+
+    int ID = getpid();
     char Connect[32];
     memset(Connect, 1, 32);
+    Hash(ID, Connect);
+    remove(Connect);
 
-	int transCode = mkfifo("transfer", 0600);
+    int LocalPipe = mkfifo(Connect, 0600);
+    int local_fd = 999;
+    local_fd = open(Connect, O_RDONLY | O_NONBLOCK); // CHECK
 
-    int transferPipe = open("transfer", O_RDONLY);
+    if (local_fd == -1 && LocalPipe == -1)
+        { puts("Problem to connect!. I die"); remove(Connect); return 1; }
 
-    if (transferPipe != -1)
-        puts("Successfully open transfer pipe");
+	int transPipe = mkfifo("transfer", 0600);
+    int trans_fd = open("transfer", O_WRONLY);
+    int isSucc = write(trans_fd, Connect, 32);
 
-     // sleep(10);
-    
-    int succCode = 0; 
-    succCode = read(transferPipe, Connect, 32);
-
-    if (succCode == -1)
-        { puts("Problem to read!. I die"); return 1; }
-    
-    // drop
-    // sleep(10);
-
-    int LocalCode = mkfifo(Connect, 0600);
-
-    int LocalPipe = 999;
-    LocalPipe = open(Connect, O_RDONLY | O_NONBLOCK);
-
-    if (LocalCode == -1 && LocalPipe == -1)
-        { puts("Problem to connect!. I die"); return 1; }
-
+    puts("Successfully open transfer pipe");
     printf("Connection setup: %s\n", Connect);
-    // sleep(10);
-
-    pthread_cancel(UntilTransfer);
-    pthread_t BeforeTransfer;
-    pthread_create(&BeforeTransfer, NULL,
-                    ConsolStatus, &Connect);
                     
     unsigned char eof = 0;
     unsigned char buf[MAX + 1];
 
     int TriesToRead = 1;
-
     while(1)
     {
         if (TriesToRead > 5)
         {
             puts("Fail to read! Times out");
             puts("Connection lost");
+            sleep(10);
             remove(Connect);
             return 3;
 
         }
         memset(buf, 1, MAX + 1);
         int end = 0;
-        end = read(LocalPipe, buf, MAX + 1);
+        end = read(local_fd, buf, MAX + 1);
         unsigned char size = buf[0];
 
         if(end == 0)
         {
             printf("%d try to read from local pipe of 5\n", TriesToRead);
             TriesToRead++;
-            sleep(1);
+            //sleep(1);
             continue;
         }
+
+        fcntl(local_fd, F_SETFL, O_RDONLY);
 
         fwrite(buf+1, 1, size, text);
         fflush(text);
@@ -131,4 +101,18 @@ int main(int argc, char * argv[])
     puts("Copy ended");
 
     return 0;
+}
+
+void Hash(int ID, char * connect)
+{
+    int len = 0;
+    while (ID > 0)
+    {
+        connect[len] = ID % 26 + 'a';
+        ID /= 26;
+        len++;
+    }
+    connect[len] = 0;
+
+    strcat(connect, ".fifo");
 }
