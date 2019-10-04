@@ -9,11 +9,11 @@
 
 #define EXIT 'c'
 
-#define MAX 256
+#define MAX 1024*1024
 
 
 void Hash(int ID, char * connect);
-void * ConsolStatus(void * smth);
+int len(const char * str);
 
 int main(int argc, char * argv[]) 
 {
@@ -34,7 +34,14 @@ int main(int argc, char * argv[])
         text = fopen(argv[1], "w");
         break;
     }
+
+    if (text == 0)
+    {
+        puts("Cannot open file");
+        return 1;
+    }
     puts("Server searching connection");
+
 
 
     int ID = getpid();
@@ -45,10 +52,7 @@ int main(int argc, char * argv[])
 
     int LocalPipe = mkfifo(Connect, 0600);
     int local_fd = 999;
-    local_fd = open(Connect, O_RDONLY | O_NONBLOCK); // CHECK
-
-    if (local_fd == -1 && LocalPipe == -1)
-        { puts("Problem to connect!. I die"); remove(Connect); return 1; }
+    local_fd = open(Connect, O_RDONLY | O_NONBLOCK);
 
 	int transPipe = mkfifo("transfer", 0600);
     int trans_fd = open("transfer", O_WRONLY);
@@ -58,42 +62,39 @@ int main(int argc, char * argv[])
     printf("Connection setup: %s\n", Connect);
                     
     unsigned char eof = 0;
-    unsigned char buf[MAX + 1];
+    unsigned char buf[MAX];
 
     int TriesToRead = 1;
+    int isConnected = 0;
     while(1)
     {
         if (TriesToRead > 5)
         {
             puts("Fail to read! Times out");
             puts("Connection lost");
-            sleep(10);
             remove(Connect);
             return 3;
 
         }
-        memset(buf, 1, MAX + 1);
+        memset(buf, 0, MAX);
         int end = 0;
-        end = read(local_fd, buf, MAX + 1);
-        unsigned char size = buf[0];
+        end = read(local_fd, buf, MAX);
 
-        if(end == 0)
+        if(end == 0 && !isConnected)
         {
             printf("%d try to read from local pipe of 5\n", TriesToRead);
             TriesToRead++;
-            //sleep(1);
+            sleep(1);
             continue;
         }
 
         fcntl(local_fd, F_SETFL, O_RDONLY);
-
-        fwrite(buf+1, 1, size, text);
-        fflush(text);
-
-        if (buf[MAX] == 127)
-        {
+        isConnected = 1;
+        if (end == 0)
             break;
-        }
+        fwrite(buf, 1, end, text);
+
+        fflush(text);
     }
 
     remove(Connect);

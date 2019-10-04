@@ -9,7 +9,7 @@
 
 #define EXIT 'c'
 
-#define MAX 256
+#define MAX 1024*1024
 
 int main(int argc, char * argv[])
 {   
@@ -36,6 +36,12 @@ int main(int argc, char * argv[])
         puts("File to move does not exist. I'm die");
         return 2;
     }
+
+    if (text == NULL)
+    {
+        puts("File to move does not exist. I'm die");
+        return 2;
+    }
     puts("Client searching connection");
     
     char Connect[32];
@@ -49,16 +55,12 @@ int main(int argc, char * argv[])
     int isSucc = read(trans_fd, Connect, 32);
     if (!isSucc) { puts("No file to tranfer!"); return 0; };
 
-    if (isSucc == -1)
-        { puts("Problem to read!. I die"); fflush(NULL); return 1; }
-
     unsigned char eof = 0;
-    unsigned char buf[MAX + 1];
+    unsigned char buf[MAX];
 
     puts("Creating local connection");
     
     int local_fd = 999;
-    sleep(1);
     local_fd = open(Connect, O_WRONLY | O_NONBLOCK);
     if (local_fd == -1)
         { printf("Cannot connect to %s", Connect); return 5; }
@@ -67,20 +69,12 @@ int main(int argc, char * argv[])
 
     printf("Connection setup: %s\n", Connect);
 
-    while (!feof(text))
-    {   
+    int end = 0;
+    while(!feof(text))        
+    {
         memset(buf, 0, MAX);
-
-        int end = 0;
-        while(!feof(text))        
-        {
-            end = fread(buf + 1, 1, MAX - 1, text);
-            buf[0] = end;
-            buf[MAX] = 1;
-            if (feof(text))
-                buf[MAX] = 127;
-            write(local_fd, buf, MAX + 1);
-        }
+        end = fread(buf, 1, MAX, text);
+        write(local_fd, buf, end);
     }
 
     puts("Copy ended");
