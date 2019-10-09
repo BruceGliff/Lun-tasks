@@ -8,13 +8,16 @@
 
 struct msgbuf {
    long mType;
-   int pid;
+   char trash;
 };
 
 int main(int argc, char * argv[])
 {
     if (argc == 1)
         return 0;
+
+    struct msgbuf msg;
+    msg.trash = 0;
 
     char *endptr;
     int messKey = msgget(IPC_PRIVATE, IPC_CREAT | 0666);
@@ -27,53 +30,47 @@ int main(int argc, char * argv[])
     for (i = 0; i < n; i++)
     {
         pid_t pid = fork();
+        if (pid == -1)
+        {
+            goto here;
+        }
         if (pid == 0)
             break;
 
         if (i == n - 1)
-            return 0;
-    }
-
-    pid_t pid = getpid ();
-
-    struct msgbuf msg;
-    struct msgbuf rec;
-    msg.mType = i + 1;
-    msg.pid = pid;
-
-
-    // if (i == 3) sleep(1);
-    // if (i == 10) sleep(2);
-    // if (i == 20) sleep(3);
-    // if (i == 30) sleep(4);
-
-    struct msqid_ds info; 
-    info.msg_qnum = 0;
-
-    while(info.msg_qnum != i)
-    {
-        if (msgctl(messKey, IPC_STAT, &info) != 0)
         {
-           puts("Fail to get info");
-           return -3;
+            here:
+            msg.mType = 1;
+            if (msgsnd(messKey, &msg, 1, 0) == -1)
+            {
+                puts("Fails to send message");
+                return -2;
+            }
+
+            int j = 0;
+            for (j = 0; j <= i; j++)
+                wait(NULL);
+
+            msgctl(messKey, IPC_RMID, NULL);
+            
+            return 0;
         }
     }
 
-    printf("%d\n", i);
+    struct msgbuf rec;
 
-    if (msgsnd(messKey, &msg, 4, 0) == -1)
+    if (msgrcv(messKey, &rec, 1, i + 1, 0) == -1)
+    {
+        puts("Fails to recive message");
+        return -2;
+    }
+    printf("%d\n", i + 1);
+
+    msg.mType = i + 2;
+    if (msgsnd(messKey, &msg, 1, 0) == -1)
     {
         puts("Fails to send message");
         return -2;
     }
-
-    if (msgctl(messKey, IPC_STAT, &info) != 0)
-    {
-        puts("Fail to get info");
-        return -3;
-    }
-    if (info.msg_qnum == n)
-        msgctl(messKey, IPC_RMID, 0);
-
     return 0;
 }
