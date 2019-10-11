@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <string.h>
 
 struct msgbuf {
    long mType;
@@ -64,7 +65,9 @@ int main(int argc, char * argv[])
         puts("Fails to recive message");
         return -2;
     }
-    printf("%d\n", i + 1);
+    
+    printf("%d ", i + 1);
+    fflush(NULL);
 
     msg.mType = i + 2;
     if (msgsnd(messKey, &msg, 1, 0) == -1)

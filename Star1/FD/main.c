@@ -2,14 +2,16 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <assert.h>
 
 int compare(int fd1, int fd2);
 
 int main()
 {
-    int fd1 = open("1", O_WRONLY);
-    int fd2 = open("/home/brucegliff/Code/Lun-tasks/Star1/FD/1", O_RDONLY);
+    int fd1 = open("xx", O_WRONLY | O_CREAT);
+    int fd2 = open("xx", O_RDONLY);
 
+    assert(fd1 >= 0 && fd2 >= 0);
     printf("%d", compare(fd1, fd2));
 
     return 0;
