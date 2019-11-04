@@ -1,101 +1,150 @@
+#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <signal.h>
-#include <string.h>
-#include <unistd.h>
+#include <sys/wait.h>
+
+pid_t reader_pid;
+pid_t writer_pid;
+
+int bit;
+char tmp;
+
+int flag = 1;
 
 FILE * openFile(int argc, char * argv[]);
-
-
-void Recieve0(int sig)
+void voidHandler(int s){flag = 0;}
+void Handler1(int s)
 {
-	puts("Get0");
-    fflush(NULL);
-}
+    tmp |= 1 << bit;
 
-void Recieve1(int sig)
-{
-    puts("Get1");
-    fflush(NULL);
-}
-
-
-void reader(int argc, char * argv[], pid_t writerPid)
-{
-    sigset_t SigWriterReady;
-    sigemptyset(&SigWriterReady);                                                             
-    sigaddset(&SigWriterReady, SIGURG); 
-    int sig1;                                                                      
-    sigwait(&SigWriterReady, &sig1);
-
-    FILE * file = openFile(argc, argv);
-    if (file == NULL)
+    if (bit == 7)
     {
-        puts("Cannot open file.");
-        return;
+	    printf("%c", tmp);
+	    tmp = 0;
     }
 
+    bit = (bit + 1) % 8;
 
-    int killStatus = kill(writerPid, SIGUSR1);
-    sleep(1);
-    kill(writerPid, SIGUSR2);
-    puts("ASd");
+    kill(reader_pid, SIGURG);
 }
-
-
-void writer(pid_t ReaderPid)
+void Handler0(int s)
 {
-    // begin preparation part
+    tmp |= 0 << bit;
 
-    struct sigaction read0;
-    memset(&read0, 0, sizeof(read0));
-    read0.sa_handler = Recieve0;
-    sigset_t SigRead0;
-    sigemptyset(&SigRead0);                                                             
-    sigaddset(&SigRead0, SIGUSR1); 
-    read0.sa_mask = SigRead0;
-    sigaction(SIGUSR1, &read0, 0);
-
-    struct sigaction read1;
-    memset(&read1, 0, sizeof(read1));
-    read1.sa_handler = Recieve1;
-    sigset_t SigRead1;
-    sigemptyset(&SigRead1);                                                             
-    sigaddset(&SigRead1, SIGUSR2); 
-    read1.sa_mask = SigRead1;
-    sigaction(SIGUSR1, &read1, 0);
-    puts("end");
-    // end preparation part
-    kill(ReaderPid, SIGURG);
-
-    sleep(100);
-}
-
-
-
-
-
-int main(int argc, char * argv[]) 
-{
-    pid_t writerPid = getpid();
-    pid_t forkPid = fork();
-
-    if (forkPid == -1)
+    if (bit == 7)
     {
-        puts("Wrong creation child.");
-        fflush(NULL);
-        return -1;
+	    printf("%c", tmp);
+	    tmp = 0;
     }
 
-    if (!forkPid)
-        reader(argc, argv, writerPid);
-    else
-        writer(forkPid);
+    bit = (bit + 1) % 8;
+
+    kill(reader_pid, SIGURG);
+}
+
+void ChildHandler(int sig)
+{
+	exit(1);
+}
+
+int main(int argc, char **argv)
+{
+    int pipefd[2];
+    pipe(pipefd);
+
+
+    reader_pid = getpid();
+
+    // prepare to child death
+    sigset_t ChildDeath;
+    signal(SIGCHLD, &ChildHandler);
+    sigemptyset(&ChildDeath);
+    sigaddset(&ChildDeath, SIGCHLD); 
     
+    // wait part
+    sigset_t Wait;
+    int sig;
+    signal(SIGURG, &voidHandler);
+    sigemptyset(&Wait);
+    sigaddset(&Wait, SIGURG);
 
+    pid_t fork_pid = fork();
+    if (fork_pid < 0) {
+        exit(EXIT_FAILURE);
+    }
 
-    return 0;
+    if (fork_pid == 0) {
+        // writer
+	writer_pid = getpid();
 
+        // prepare part
+        sigset_t Get1;
+        int SigGet1;
+        signal(SIGUSR2, &Handler1);
+        sigemptyset(&Get1);
+        sigaddset(&Get1, SIGUSR2);
+
+        sigset_t Get0;
+        int SigGet0;
+        signal(SIGUSR1, &Handler0);
+        sigemptyset(&Get0);
+        sigaddset(&Get0, SIGUSR1);
+
+        // sync part
+        close(pipefd[0]);
+        write(pipefd[1], "", 1); // процесс готов к приёму сигнала
+        close(pipefd[1]);
+
+	// wait part
+        sigwait(&Wait, &sig);
+
+        exit(EXIT_SUCCESS);
+    }
+    if (fork_pid > 0) 
+    {
+        // reader
+	writer_pid = fork_pid;
+	FILE * file = openFile(argc, argv);
+	if (!file)
+		return -1;
+	
+	// wait part
+	sigset_t Wait;
+        int sig;
+        signal(SIGURG, &voidHandler);
+        sigemptyset(&Wait);
+        sigaddset(&Wait, SIGURG);
+
+	// sync part
+        char c;
+        close(pipefd[1]);
+        read(pipefd[0], &c, 1); // ожидание готовности потомка
+        close(pipefd[0]);
+	// send part
+	while(1)
+	{
+		tmp = fgetc(file);
+		if (feof(file)) break;
+		bit = 0;
+		while(bit < 8)
+		{
+			flag = 1;
+
+			if (tmp & (1<<bit))
+				kill(writer_pid, SIGUSR2);
+			else
+				kill(writer_pid, SIGUSR1);
+			bit++;		
+			//sigwait(&Wait, &sig);
+
+			//busy wait
+
+			while(flag){}
+		}
+	}
+        kill(writer_pid, SIGURG);
+    }
 }
 
 
@@ -106,16 +155,13 @@ FILE * openFile(int argc, char * argv[])
     switch (argc)
     {
     case 1:
-        puts("There are not any file, so File for coping is \"Text.txt\"");
         text = fopen("Text.txt", "r");
         break;
     case 2:
-        printf("Trying to open file %s\n", argv[1]);
         text = fopen(argv[1], "r");
         break;
     
     default:
-        printf("There are too many files to open. Trying to open %s\n", argv[1]);
         text = fopen(argv[1], "r");
         break;
     }
