@@ -10,12 +10,32 @@ pid_t writer_pid;
 
 int bit;
 char tmp;
+FILE * f;
 
 int flag = 1;
 int ChFlag = 1;
 
 FILE * openFile(int argc, char * argv[]);
-void voidHandler(int s){flag = 0;}
+void voidHandler(int s)
+{
+	if (feof(f))
+		exit(1);
+
+	if (bit == 0)
+		tmp = fgetc(f);
+
+	if (tmp & (1<<bit))
+	{
+		bit = (bit + 1) % 8;
+		kill(writer_pid, SIGUSR2);
+	}
+	else
+	{
+		bit = (bit + 1) % 8;
+		kill(writer_pid, SIGUSR1);
+	}
+}
+
 void Handler1(int s)
 {
     tmp |= 1 << bit;
@@ -64,6 +84,7 @@ int main(int argc, char **argv)
 
     // prepare to child's death
     sigset_t ChildDeath;
+    int SigChildDeath;
     signal(SIGCHLD, &ChildHandler);
     sigemptyset(&ChildDeath);
     sigaddset(&ChildDeath, SIGCHLD); 
@@ -121,44 +142,22 @@ int main(int argc, char **argv)
         // reader
 
 	writer_pid = fork_pid;
-	FILE * file = openFile(argc, argv);
-	if (!file)
+	f = openFile(argc, argv);
+	if (!f)
 		return -1;
 	
-	// wait part
-	sigset_t Wait;
-        int sig;
-        signal(SIGURG, &voidHandler);
-        sigemptyset(&Wait);
-        sigaddset(&Wait, SIGURG);
-
 	// sync part
         char c;
         close(pipefd[1]);
         read(pipefd[0], &c, 1); // process is wait
         close(pipefd[0]);
-	// send part
-	while(1)
-	{
-		tmp = fgetc(file);
-		if (feof(file)) break;
-		bit = 0;
-		while(bit < 8)
-		{
-			flag = 1;
 
-			if (tmp & (1<<bit))
-				kill(writer_pid, SIGUSR2);
-			else
-				kill(writer_pid, SIGUSR1);
-			bit++;		
-			//sigwait(&Wait, &sig);
 
-			//busy wait
+	// New send part
+	
+	voidHandler(0);
 
-			while(flag){}
-		}
-	}
+	sigwait(&ChildDeath, &SigChildDeath);
         kill(writer_pid, SIGURG);
     }
 }
