@@ -43,7 +43,6 @@ void Handler1(int s)
     if (bit == 7)
     {
 	    printf("%c", tmp);
-	    fflush(NULL);
 	    tmp = 0;
     }
 
@@ -58,7 +57,6 @@ void Handler0(int s)
     if (bit == 7)
     {
 	    printf("%c", tmp);
-	    fflush(NULL);
 	    tmp = 0;
     }
 
@@ -85,30 +83,26 @@ int main(int argc, char **argv)
     reader_pid = getpid();
 
     // prepare to child's death
-    sigset_t ChildDeathSet;
+    sigset_t ChildDeath;
     int SigChildDeath;
-    sigemptyset(&ChildDeathSet);
-    sigaddset(&ChildDeathSet, SIGCHLD); 
-    struct sigaction ChildDeath;
-    ChildDeath.sa_handler = ChildHandler;
-    ChildDeath.sa_flags = SA_RESTART;
-    sigaction(SIGCHLD, &ChildDeath, NULL);
+    signal(SIGCHLD, &ChildHandler);
+    sigemptyset(&ChildDeath);
+    sigaddset(&ChildDeath, SIGCHLD); 
 	
     // wait part
     sigset_t Wait;
     int sig;
+    signal(SIGURG, &voidHandler);
     sigemptyset(&Wait);
     sigaddset(&Wait, SIGURG);
-    struct sigaction WaitSig;
-    WaitSig.sa_handler = voidHandler;
-    WaitSig.sa_flags = SA_RESTART;
-    sigaction(SIGURG, &WaitSig, NULL);
-
+    
     // prepare for parent's death
-    struct sigaction PDeath;
-    PDeath.sa_handler = ChildExit;
-    PDeath.sa_flags = SA_RESTART;
-    sigaction(SIGHUP, &PDeath, NULL);
+    sigset_t ChExit;
+    int SigExit;
+    signal(SIGHUP, &ChildExit);
+    sigemptyset(&ChExit);
+    sigaddset(&ChExit, SIGHUP);
+
 
     pid_t fork_pid = fork();
     if (fork_pid < 0) {
@@ -121,21 +115,23 @@ int main(int argc, char **argv)
 	writer_pid = getpid();
 
         // prepare part
-	struct sigaction USR2;
-        USR2.sa_handler = Handler1;
-	USR2.sa_flags = SA_RESTART;
-    	sigaction(SIGUSR2, &USR2, NULL);
+        sigset_t Get1;
+        int SigGet1;
+        signal(SIGUSR2, &Handler1);
+        sigemptyset(&Get1);
+        sigaddset(&Get1, SIGUSR2);
 
-	struct sigaction USR1;
-        USR1.sa_handler = Handler0;
-	USR1.sa_flags = SA_RESTART;
-    	sigaction(SIGUSR1, &USR1, NULL);
+        sigset_t Get0;
+        int SigGet0;
+        signal(SIGUSR1, &Handler0);
+        sigemptyset(&Get0);
+        sigaddset(&Get0, SIGUSR1);
 
         // sync part
         close(pipefd[0]);
         write(pipefd[1], "", 1); // process is ready
         close(pipefd[1]);
-		
+
 	// wait part
         sigwait(&Wait, &sig);
 
@@ -161,7 +157,7 @@ int main(int argc, char **argv)
 	
 	voidHandler(0);
 
-	sigwait(&ChildDeathSet, &SigChildDeath);
+	sigwait(&ChildDeath, &SigChildDeath);
         kill(writer_pid, SIGURG);
     }
 }
