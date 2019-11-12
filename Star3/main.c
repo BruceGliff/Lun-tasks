@@ -1,174 +1,194 @@
-#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <signal.h>
-#include <sys/wait.h>
-#include <sys/prctl.h>
+#include <unistd.h>
 
-pid_t reader_pid;
-pid_t writer_pid;
+#define CHARFULL SIGURG
+#define ANSWER SIGILL
 
-int bit;
-char tmp;
-FILE * f;
+FILE * GetFile(int argc, char * argv[]);
 
-int flag = 1;
-int ChFlag = 1;
 
-FILE * openFile(int argc, char * argv[]);
-void voidHandler(int s)
+void voidD(int s)
 {
-	if (feof(f))
-		exit(1);
+}
 
-	if (bit == 0)
-		tmp = fgetc(f);
 
-	if (tmp & (1<<bit))
+// Global part
+int reader_pid; // child
+int writer_pid; // parent
+
+char c;
+int b;
+
+// HANDLERS
+void recieve1(int s)
+{
+//puts("s");
+	c |= 1 << b;
+	b = (b + 1) % 8;
+	if (b)
 	{
-		bit = (bit + 1) % 8;
-		kill(writer_pid, SIGUSR2);
+		kill(reader_pid, ANSWER);
+//puts("R");
+	}
+	else	
+		kill(writer_pid, CHARFULL);
+}
+void recieve0(int s)
+{
+//puts("s");
+	c |= 0 << b;
+	b = (b + 1) % 8;
+	if (b)
+	{
+		kill(reader_pid, ANSWER);
+//puts("R");
+	}
+	else	
+		kill(writer_pid, CHARFULL);
+}
+
+void exitH(int sig)
+{
+	exit(2);
+}
+
+
+
+int main(int argc, char * argv[])
+{
+	writer_pid = getpid();
+	
+	sigset_t WaitSignals;
+	sigfillset(&WaitSignals);
+	sigdelset(&WaitSignals, SIGUSR1);
+	sigdelset(&WaitSignals, SIGUSR2);
+	sigset_t _WaitSignals;
+	sigemptyset(&_WaitSignals);
+	sigaddset(&_WaitSignals, SIGUSR1);
+	sigaddset(&_WaitSignals, SIGUSR2);	
+	sigprocmask(SIG_BLOCK, &_WaitSignals, NULL);
+
+	// SIGCHILD
+	sigset_t ReadOverSet;
+	sigemptyset(&ReadOverSet);
+	sigaddset(&ReadOverSet, SIGCHLD);
+	struct sigaction Exit;
+	Exit.sa_handler = exitH;
+	sigaction(SIGCHLD, &Exit, NULL);
+		
+	struct sigaction Rec0, Rec1;
+	Rec0.sa_handler = recieve0;
+	Rec1.sa_handler = recieve1;
+	sigaction(SIGUSR1, &Rec0, NULL);
+	sigaction(SIGUSR2, &Rec1, NULL);
+
+	int fork_pid = fork();
+	if(fork_pid < 0)
+		exit(EXIT_FAILURE);
+
+	if (fork_pid)
+	{
+		// parent
+		reader_pid = fork_pid;
+		printf("par %d\n", writer_pid);
+	       	fflush(NULL);	
+
+
+		// preapre part
+		sigset_t CharFull;
+		sigfillset(&CharFull);
+		sigdelset(&CharFull, CHARFULL);
+	//	sigdelset(&CharFull, SIGUSR1);
+	//	sigdelset(&CharFull, SIGUSR2);
+		sigset_t _CharFull;
+		sigemptyset(&_CharFull);
+		sigaddset(&_CharFull, CHARFULL);
+
+
+
+//puts("Asd");
+		// wait
+		sigset_t any; sigemptyset(&any);
+		sigprocmask(SIG_UNBLOCK, &_WaitSignals, NULL);
+		sigsuspend(&any);
+//puts("Asd");
+		while(1)
+		{
+			sigsuspend(&CharFull);
+			printf("%c", c);
+			fflush(NULL);
+			c = 0;
+			sigprocmask(SIG_BLOCK, &_CharFull, NULL);
+			kill(reader_pid, ANSWER);
+		}
+
+
+		sigsuspend(&ReadOverSet);
 	}
 	else
 	{
-		bit = (bit + 1) % 8;
-		kill(writer_pid, SIGUSR1);
+		// child
+		reader_pid = getpid();
+		printf("child %d\n", reader_pid);
+	       	fflush(NULL);
+
+		// prepare part
+		sigset_t Ans;
+		sigfillset(&Ans);
+		sigdelset(&Ans, ANSWER);
+		sigdelset(&Ans, SIGINT);
+		sigset_t _Ans;
+		sigemptyset(&_Ans);
+		sigaddset(&_Ans, ANSWER);
+		struct sigaction sa;
+		sigemptyset(&sa.sa_mask);
+		sa.sa_flags = 0;
+		sa.sa_handler = voidD;
+		sigaction(ANSWER, &sa, NULL);
+	       	
+		sigprocmask(SIG_SETMASK, &_Ans, NULL);
+
+		FILE * f = GetFile(argc, argv);
+		if (!f)
+			return -1;
+
+		char tmp = fgetc(f);
+
+		while(!feof(f))
+		{
+			int bit = 0;
+			while(bit < 8)
+			{
+
+				if (tmp & (1 << bit))
+				{
+					bit++;
+					kill(writer_pid, SIGUSR2);
+				}
+				else
+				{
+					bit++;
+					kill(writer_pid, SIGUSR1);
+				}
+//puts("A");
+				sigsuspend(&Ans);
+//puts("V");
+			}
+			tmp = fgetc(f);
+		}
+puts("ASD");	
+		exit(1); // auto send SIGCHILD also READOVER
 	}
-}
-
-void Handler1(int s)
-{
-    tmp |= 1 << bit;
-
-    if (bit == 7)
-    {
-	    printf("%c", tmp);
-	    fflush(NULL);
-	    tmp = 0;
-    }
-
-    bit = (bit + 1) % 8;
-
-    kill(reader_pid, SIGURG);
-}
-void Handler0(int s)
-{
-    tmp |= 0 << bit;
-
-    if (bit == 7)
-    {
-	    printf("%c", tmp);
-	    fflush(NULL);
-	    tmp = 0;
-    }
-
-    bit = (bit + 1) % 8;
-
-    kill(reader_pid, SIGURG);
-}
-
-void ChildHandler(int sig)
-{
-	exit(1);
-}
-void ChildExit(int sig)
-{
-	exit(1);
-}
-
-int main(int argc, char **argv)
-{
-    int pipefd[2];
-    pipe(pipefd);
 
 
-    reader_pid = getpid();
 
-    // prepare to child's death
-    sigset_t ChildDeathSet;
-    int SigChildDeath;
-    sigemptyset(&ChildDeathSet);
-    sigaddset(&ChildDeathSet, SIGCHLD); 
-    struct sigaction ChildDeath;
-    ChildDeath.sa_handler = ChildHandler;
-    ChildDeath.sa_flags = SA_RESTART;
-    sigaction(SIGCHLD, &ChildDeath, NULL);
-	
-    // wait part
-    sigset_t Wait;
-    int sig;
-    sigemptyset(&Wait);
-    sigaddset(&Wait, SIGURG);
-    struct sigaction WaitSig;
-    WaitSig.sa_handler = voidHandler;
-    WaitSig.sa_flags = SA_RESTART;
-    sigaction(SIGURG, &WaitSig, NULL);
-
-    // prepare for parent's death
-    struct sigaction PDeath;
-    PDeath.sa_handler = ChildExit;
-    PDeath.sa_flags = SA_RESTART;
-    sigaction(SIGHUP, &PDeath, NULL);
-
-    pid_t fork_pid = fork();
-    if (fork_pid < 0) {
-        exit(EXIT_FAILURE);
-    }
-
-    if (fork_pid == 0) {
-        // writer
-	prctl(PR_SET_PDEATHSIG, SIGHUP);
-	writer_pid = getpid();
-
-        // prepare part
-	struct sigaction USR2;
-        USR2.sa_handler = Handler1;
-	USR2.sa_flags = SA_RESTART;
-    	sigaction(SIGUSR2, &USR2, NULL);
-
-	struct sigaction USR1;
-        USR1.sa_handler = Handler0;
-	USR1.sa_flags = SA_RESTART;
-    	sigaction(SIGUSR1, &USR1, NULL);
-
-        // sync part
-        close(pipefd[0]);
-        write(pipefd[1], "", 1); // process is ready
-        close(pipefd[1]);
-		
-	// wait part
-        sigwait(&Wait, &sig);
-
-        exit(EXIT_SUCCESS);
-    }
-    if (fork_pid > 0) 
-    {
-        // reader
-
-	writer_pid = fork_pid;
-	f = openFile(argc, argv);
-	if (!f)
-		return -1;
-	
-	// sync part
-        char c;
-        close(pipefd[1]);
-        read(pipefd[0], &c, 1); // process is wait
-        close(pipefd[0]);
-
-
-	// New send part
-	
-	voidHandler(0);
-
-	sigwait(&ChildDeathSet, &SigChildDeath);
-        kill(writer_pid, SIGURG);
-    }
+	return 0;
 }
 
 
-
-FILE * openFile(int argc, char * argv[])
+FILE * GetFile(int argc, char * argv[])
 {
     FILE * text = NULL;
     switch (argc)
@@ -187,3 +207,5 @@ FILE * openFile(int argc, char * argv[])
 
     return text;
 }
+
+
