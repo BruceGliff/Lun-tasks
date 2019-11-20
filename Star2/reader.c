@@ -17,7 +17,9 @@ enum
 	SEM_WONLY,
 	SEM_RONLY,
 	SEM_READ,
-	SEM_WRITE
+	SEM_WRITE,
+	SEM_WWORK,
+	SEM_RWORK
 };
 
 struct data
@@ -32,19 +34,22 @@ int main(int argc, char * argv[])
 
 	struct data * d;
 
-	int sem_id = semget(key, 4, IPC_CREAT | IPC_EXCL | 0666);
+	int sem_id = semget(key, 6, IPC_CREAT | IPC_EXCL | 0666);
 	if (sem_id == -1)
-		sem_id = semget(key, 4, 0666);
+		sem_id = semget(key, 6, 0666);
 
 	struct sembuf sb[3];
 	sb[0].sem_num = SEM_RONLY;
 	sb[0].sem_op = 0;
 	sb[0].sem_flg = 0;
-	sb[1].sem_num = SEM_RONLY;
-	sb[1].sem_op = 1;
-	sb[1].sem_flg = SEM_UNDO;
+	sb[1].sem_num = SEM_WWORK;
+	sb[1].sem_op = 0;
+	sb[1].sem_flg = 0;
+	sb[2].sem_num = SEM_RONLY;
+	sb[2].sem_op = 1;
+	sb[2].sem_flg = SEM_UNDO;
 
-	semop(sem_id, sb, 2);
+	semop(sem_id, sb, 3);//OP/////////
 	
 	int shm_id = shmget(key, sizeof(struct data), IPC_CREAT | IPC_EXCL | 0666);
 	if (shm_id == -1)
@@ -59,7 +64,10 @@ int main(int argc, char * argv[])
 	sb[1].sem_num = SEM_WONLY;
 	sb[1].sem_op = 1;
 	sb[1].sem_flg = 0;
-	semop(sem_id, sb, 2);
+	sb[2].sem_num = SEM_RWORK; //
+	sb[2].sem_op = 1;
+	sb[2].sem_flg = SEM_UNDO;
+	semop(sem_id, sb, 3);//OP/////////////
 
 //puts("b");	
 	int fd = GetFile(argc, argv);
@@ -94,13 +102,12 @@ int main(int argc, char * argv[])
 	d->size = read(fd, d->data, MAX);
 	do
 	{
-//sleep(20);
 //puts("A");	
-		semop(sem_id, sb, 1);
+		semop(sem_id, sb, 1);//OP//////////////
 //puts("Y");
-		if (semop(sem_id, sb1, 3) == -1)
+		if (semop(sem_id, sb1, 3) == -1)//OP////////////
 			break;			
-		semop(sem_id, balance, 2);
+		semop(sem_id, balance, 2);//OP/////////////
 		d->size = read(fd, d->data, MAX);
 //puts("B");
 	} while (d->size != 0);
