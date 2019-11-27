@@ -85,33 +85,39 @@ int main(int argc, char * argv[])
 
 	sb[0].sem_num = SEM_READ;
 	sb[0].sem_op = 1;
-	sb[0].sem_flg = SEM_UNDO;
+	sb[0].sem_flg = 0;//SEM_UNDO;
 	
 	sb1[2].sem_num = SEM_WRITE;
 	sb1[2].sem_op = -1;
 	sb1[2].sem_flg = 0;//SEM_UNDO;
 
-	struct sembuf balance[2];
-	balance[0].sem_num = SEM_READ;
+	struct sembuf balance[4];
+	balance[0].sem_num = SEM_WRITE;
 	balance[0].sem_op = 1;
-	balance[0].sem_flg = 0;
-	balance[1].sem_num = SEM_READ;
+	balance[0].sem_flg = SEM_UNDO;
+	balance[1].sem_num = SEM_WRITE;
 	balance[1].sem_op = -1;
-	balance[1].sem_flg = SEM_UNDO;
+	balance[1].sem_flg = 0;
+	balance[2].sem_num = SEM_READ;
+	balance[2].sem_op = 1;
+	balance[2].sem_flg = SEM_UNDO;
+	balance[3].sem_num = SEM_READ;
+	balance[3].sem_op = -1;
+	balance[3].sem_flg = 0;
+
+	semop(sem_id, balance, 4);
 
 	d->size = read(fd, d->data, MAX);
+
 	do
 	{
-//puts("A");	
 		semop(sem_id, sb, 1);//OP//////////////
-//puts("Y");
 		if (semop(sem_id, sb1, 3) == -1)//OP////////////
 			break;			
-		semop(sem_id, balance, 2);//OP/////////////
+
 		d->size = read(fd, d->data, MAX);
-//puts("B");
 	} while (d->size != 0);
-//puts("C");
+
 	shmdt(d);	
 }
 

@@ -28,7 +28,7 @@ int main()
 	key_t key = ftok("/tmp", 'b');
 
 	struct data * d;
-	// create sems
+	// create semaphores
 	// if exists then connect
 	int sem_id = semget(key, 6, IPC_CREAT | IPC_EXCL | 0666);
 	if (sem_id == -1)
@@ -38,7 +38,7 @@ int main()
 	sb[0].sem_num = SEM_WONLY;
 	sb[0].sem_op = 0;
 	sb[0].sem_flg = 0;
-	sb[1].sem_num = SEM_RWORK; //
+	sb[1].sem_num = SEM_RWORK;
 	sb[1].sem_op = 0;
 	sb[1].sem_flg = 0;
 	sb[2].sem_num = SEM_WONLY;
@@ -80,28 +80,30 @@ int main()
 	
 	sb[0].sem_num = SEM_WRITE;
 	sb[0].sem_op = 1;
-	sb[0].sem_flg = SEM_UNDO;
+	sb[0].sem_flg = 0;//SEM_UNDO;
 
-	struct sembuf balance[2];
+	struct sembuf balance[4];
 	balance[0].sem_num = SEM_WRITE;
 	balance[0].sem_op = 1;
-	balance[0].sem_flg = 0;
+	balance[0].sem_flg = SEM_UNDO;
 	balance[1].sem_num = SEM_WRITE;
 	balance[1].sem_op = -1;
-	balance[1].sem_flg = SEM_UNDO;
+	balance[1].sem_flg = 0;
+	balance[2].sem_num = SEM_READ;
+	balance[2].sem_op = 1;
+	balance[2].sem_flg = SEM_UNDO;
+	balance[3].sem_num = SEM_READ;
+	balance[3].sem_op = -1;
+	balance[3].sem_flg = 0;
+
+	semop(sem_id, balance, 4);
 
 	while(semop(sem_id, sb1, 3) != -1)
 	{
-//puts("A");
 		write(1, d->data, d->size);
-//printf("\n%d\n", d->size);fflush(NULL);
-
 		semop(sem_id, sb, 1);//OP/////////////////
-		semop(sem_id, balance, 2);//OP//////////////
-//puts("B");
 	}
 	shmdt(d);
 			
-//puts("END");	
 }
 
