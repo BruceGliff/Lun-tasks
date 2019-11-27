@@ -99,8 +99,8 @@ int main(int argc, char * argv[])
 		{
 			data.size = read(pfdin[0], data.buff, MAX);
 
-			//if (data.size == 0)
-			//	break;
+			if (data.size == 0)
+				break;
 
 			write(pfdout[1], &data, data.size);
 		}
