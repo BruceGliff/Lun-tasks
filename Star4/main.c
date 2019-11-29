@@ -72,6 +72,10 @@ int main(int argc, char * argv[])
 
 			buffer[i].fout = pfdin[1];
 			buffer[i + 1].fin = pfdout[0];
+			
+			fcntl(buffer[i].fout, F_SETFL, O_NONBLOCK);
+			fcntl(buffer[i + 1].fin, F_SETFL, O_NONBLOCK);
+			
 			buffer[i].begin = 0;
 			buffer[i].end = 0;
 			if (i == 0)
@@ -108,12 +112,16 @@ int main(int argc, char * argv[])
 	}
 
 	// parent part
-
+	
 	int fd = open(argv[2], O_RDONLY);
-	if (fd == -1) exit(1);
+	if (fd == -1) {perror ("No file"); exit(1); }
 //printf("%d\n", fd);
 	buffer[0].fin = fd; // parent reads from stdout
 	buffer[n].fout = 1;
+
+	fcntl(buffer[0].fin, F_SETFL, O_NONBLOCK);
+	fcntl(buffer[n].fout, F_SETFL, O_NONBLOCK);
+
 	buffer[n].size = MAX;
 	buffer[n].begin = 0;
 	buffer[n].end = 0;
@@ -121,13 +129,12 @@ int main(int argc, char * argv[])
 
 	struct stat st;
 	fstat(fd, &st);
-	long file_s = st.st_size;
-	long transf = 0;
+	long delta = 0;
 	int eof = 0;
 
 //for (i = 0; i <= n; ++i) printf("read from %d, write to %d, size %d\n", buffer[i].fin, buffer[i].fout, buffer[i].size); exit(1);
 
-	while(file_s != transf)
+	do
 	{
 		fd_set readfd;
 		fd_set writefd;
@@ -167,6 +174,8 @@ int main(int argc, char * argv[])
 				int size = read(buffer[i].fin, buffer[i].data + buffer[i].end, buffer[i].size - buffer[i].end);
 				if (i == 0 && size == 0)
 					eof = 1;
+				if (i == 0)
+					delta += size;
 
 				buffer[i].end += size;
 			}
@@ -174,7 +183,7 @@ int main(int argc, char * argv[])
 			{
 				int size = write(buffer[i].fout, buffer[i].data + buffer[i].begin, buffer[i].end - buffer[i].begin);
 				if (i == n)
-					transf += size;
+					delta -= size;
 
 				buffer[i].begin += size;
 				if (buffer[i].begin == buffer[i].end)
@@ -184,8 +193,7 @@ int main(int argc, char * argv[])
 				}
 			}
 		}
-			
-	}
+	}while (delta != 0);
 	
 	return 0;
 }
