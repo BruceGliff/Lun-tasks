@@ -103,6 +103,9 @@ int main(int argc, char * argv[])
 		{
 			data.size = read(pfdin[0], data.buff, MAX);
 
+			//if (i == 2)
+			//	sleep(10);
+
 			if (data.size == 0)
 				break;
 
@@ -131,8 +134,6 @@ int main(int argc, char * argv[])
 	fstat(fd, &st);
 	long delta = 0;
 	int eof = 0;
-
-//for (i = 0; i <= n; ++i) printf("read from %d, write to %d, size %d\n", buffer[i].fin, buffer[i].fout, buffer[i].size); exit(1);
 
 	do
 	{
