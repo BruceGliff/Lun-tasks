@@ -74,18 +74,21 @@ HashTable * Ht_Create(int size)
 void Dump(HashTable * ht)
 {
     private * pr = (private *)ht->prvtPart_; 
-    Node * curr;
+    Node * curr = NULL;
 
     int i = 0;
     for (i = 0; i < pr->size; ++i)
     {
+        int flag = 0;
         curr = pr->nodes[i];
         while(curr)
         {
             printf("%s %d -- ", curr->key, curr->value);
             curr = curr->next;
+            flag = 1;
         }
-        printf("\n");
+        if (flag)
+            printf("\n");
     }
 }
 

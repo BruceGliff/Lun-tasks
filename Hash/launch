@@ -1,0 +1,1 @@
+./program.out > out.out && gcov HashTable.c

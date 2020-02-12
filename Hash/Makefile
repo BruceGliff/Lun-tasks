@@ -1,11 +1,9 @@
 all : program.out
 
 program.out : main.o HashTable.o
-	gcc -o $@ $^
-
-CFLAGS = -O0 -MD
-
+	gcc --coverage -o $@ $^
+CFLAGS = -O0 -MD --coverage
 -include *.d
 
 clean:
-	rm *.o *.d program.out
+	rm *.o *.d *.out *.gc*
