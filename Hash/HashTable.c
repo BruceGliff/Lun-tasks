@@ -15,15 +15,18 @@ typedef struct private
     int size;
 } private;
 
-
+static void * new(size_t size_of, int count);
 static Node ** HASH(private const * pr, char const * key)
 {
     return &pr->nodes[key[0] % pr->size];
 }
-static int insert(HashTable * ht, char const * key, int value)
+int Ht_Insert(HashTable * ht, char const * key, int value)
 {
     if (!ht || !key)
-        return E_wrongdata;
+    {
+        ERRNO = E_wrongdata;
+        return -1;
+    }
 
     private const * pr = (private *)ht->prvtPart_;
     Node ** curr = HASH(pr, key);
@@ -32,25 +35,34 @@ static int insert(HashTable * ht, char const * key, int value)
         if(strcmp((*curr)->key, key) == 0)
         {
             (*curr)->value = value;
-            return E_recreate;
+            ERRNO = E_recreate;
+            return 0;
         }
         curr = &(*curr)->next;
     }
-    (*curr) = (Node *) calloc (sizeof(Node), 1);
+    (*curr) = (Node *) new(sizeof(Node), 1);
     if (!*curr)
-        return E_alloc;
+    {
+        ERRNO = E_alloc;
+        return -1;
+    }
     if (asprintf(&(*curr)->key, key) == -1)
-        return E_alloc;
-
+    {
+        ERRNO = E_alloc;
+        return -1;
+    }
     (*curr)->value = value;
 
-    return E_success;
+    return 0;
 }
 
-static int find(HashTable const * ht, char const * key, int * value)
+int Ht_Find(HashTable const * ht, char const * key, int * value)
 {
     if (!ht || !key)
-        return E_wrongdata;
+    {
+        ERRNO = E_wrongdata;
+        return -1;
+    }
 
     private const * pr = (private *)ht->prvtPart_; 
     Node const * curr = *HASH(pr, key);
@@ -66,10 +78,13 @@ static int find(HashTable const * ht, char const * key, int * value)
     }
     return 0;
 }
-static int delete(HashTable * ht, char const * key)
+int Ht_Delete(HashTable * ht, char const * key)
 {
-     if (!ht || !key)
-        return E_wrongdata;
+    if (!ht || !key)
+    {
+        ERRNO = E_wrongdata;
+        return -1;
+    }
 
     private const * pr = (private *)ht->prvtPart_; 
     Node ** curr = HASH(pr, key);
@@ -82,50 +97,57 @@ static int delete(HashTable * ht, char const * key)
             *curr = (*curr)->next;
             free(prev->key);
             free(prev);
-            return E_success;
+            return 0;
         }
         curr = &(*curr)->next;
     }
 
-    return E_success;
+    return 0;
 }
 
 HashTable * Ht_Create(int size)
 {
     if (size <= 0)
+    {
+        ERRNO = E_wrongdata;
         return NULL;
+    }
 
     HashTable * ht = NULL;
-    ht = (HashTable *) malloc (sizeof(HashTable));
+    ht = (HashTable *) new(sizeof(HashTable), 1);
     if (!ht)
+    {
+        ERRNO = E_alloc;
         return NULL;
+    }
 
     ht->prvtPart_ = NULL;
-    ht->prvtPart_ = malloc(sizeof(private));
+    ht->prvtPart_ = new(sizeof(private), 1);
     if (!ht->prvtPart_)
     {
         free(ht);
+        ERRNO = E_alloc;
         return NULL;
     }
     ((private *)(ht->prvtPart_))->size = size;
-    ((private *)(ht->prvtPart_))->nodes = (Node **) calloc (sizeof(Node *), size);
+    ((private *)(ht->prvtPart_))->nodes = (Node **) new (sizeof(Node *), size);
     if (!((private *)(ht->prvtPart_))->nodes)
     {   
         free(ht->prvtPart_);
         free(ht);
+        ERRNO = E_alloc;
         return NULL;
     }
-    ht->Insert_ = &insert;
-    ht->Find_ = &find;
-    ht->Delete_ = &delete;
-
     return ht;
 }
 
-int Dump(HashTable const * ht)
+int Ht_Dump(HashTable const * ht)
 {
     if (!ht)
-        return E_wrongdata;
+    {
+        ERRNO = E_wrongdata;
+        return -1;
+    }
 
     private * pr = (private *)ht->prvtPart_; 
     Node * curr = NULL;
@@ -146,10 +168,18 @@ int Dump(HashTable const * ht)
             printf("\n");
     }
     printf("-----------------------\n\n");
+
+    return 0;
 }
 
-void Ht_Delete(HashTable * ht)
+void Ht_Free(HashTable * ht)
 {   
+    if (!ht)
+    {
+        ERRNO = E_wrongdata;
+        return;
+    }
+
     private * pr = (private *)ht->prvtPart_; 
     Node * curr  = NULL;
 
@@ -168,4 +198,16 @@ void Ht_Delete(HashTable * ht)
     free(pr->nodes);
     free(pr);
     free(ht);
+}
+
+void * new(size_t size_of, int count)
+{
+    if (BrokenFlag == 1)
+    {
+        --BrokenFlag;
+        return NULL;
+    }
+    if (BrokenFlag > 0)
+        --BrokenFlag;
+    return calloc(size_of, count);
 }

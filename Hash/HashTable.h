@@ -1,26 +1,25 @@
 enum EError
 {
-    E_success = -1,
-    E_alloc = -2,
-    E_recreate = -3,
-    E_wrongdata = -4,
-    E_refree = -5
-};
+    E_success,
+    E_alloc,
+    E_recreate,
+    E_wrongdata,
+    E_refree
+} ERRNO;
+
+extern int BrokenFlag;
 
 typedef struct HashTable
 {
     void * prvtPart_;
-    int (*Find_) (struct HashTable const * ht, char const * key, int * value);
-    int (*Delete_) (struct HashTable * ht, char const * key);
-    int (*Insert_) (struct HashTable * ht, char const * key, int const value);
 } HashTable;
 
 HashTable * Ht_Create(int size);
-// int Insert(struct HashTable * ht, char const * key, int const value);
-// int Delete(struct HashTable * ht, char const * key);
-// int Find(struct HashTable * ht, char const * key, int * value);
-void Ht_Delete(HashTable * ht);
-int Dump(HashTable const * ht);
+int Ht_Find(HashTable const * ht, char const * key, int * value);
+int Ht_Delete(HashTable * ht, char const * key);
+int Ht_Insert(HashTable * ht, char const * key, int const value);
+void Ht_Free(HashTable * ht);
+int Ht_Dump(HashTable const * ht);
 
 #define E       printf("ASad\n");\
                 fflush(NULL); 
