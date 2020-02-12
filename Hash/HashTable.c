@@ -93,10 +93,22 @@ void Dump(HashTable * ht)
 
 void Ht_Delete(HashTable * ht)
 {   
-    E
-    free(((private *)(ht->prvtPart_))->nodes);
-    E
-    free(ht->prvtPart_);
-    E
+    private * pr = (private *)ht->prvtPart_; 
+    Node * curr;
+
+    int i = 0;
+    for (i = 0; i < pr->size; ++i)
+    {
+        curr = pr->nodes[i];
+        while(curr)
+        {
+            free(curr->key);
+            Node * tmp = curr->next;
+            free(curr);
+            curr = tmp;
+        }
+    }
+    free(pr->nodes);
+    free(pr);
     free(ht);
 }
