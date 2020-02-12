@@ -16,7 +16,7 @@ typedef struct private
 } private;
 
 
-static Node ** HASH(private * pr, char const * key)
+static Node ** HASH(private const * pr, char const * key)
 {
     return &pr->nodes[key[0] % pr->size];
 }
@@ -25,7 +25,7 @@ static int insert(HashTable * ht, char const * key, int value)
     if (!ht || !key)
         return E_wrongdata;
 
-    private * pr = (private *)ht->prvtPart_;
+    private const * pr = (private *)ht->prvtPart_;
     Node ** curr = HASH(pr, key);
     while(*curr)
     {
@@ -42,7 +42,6 @@ static int insert(HashTable * ht, char const * key, int value)
     if (asprintf(&(*curr)->key, key) == -1)
         return E_alloc;
 
-    // CHECK for -1;
     (*curr)->value = value;
 
     return E_success;
@@ -53,8 +52,8 @@ static int find(HashTable const * ht, char const * key, int * value)
     if (!ht || !key)
         return E_wrongdata;
 
-    private * pr = (private *)ht->prvtPart_; 
-    Node * curr = *HASH(pr, key);
+    private const * pr = (private *)ht->prvtPart_; 
+    Node const * curr = *HASH(pr, key);
     while (curr)
     {
         if (strcmp(curr->key, key) == 0)
@@ -72,7 +71,7 @@ static int delete(HashTable * ht, char const * key)
      if (!ht || !key)
         return E_wrongdata;
 
-    private * pr = (private *)ht->prvtPart_; 
+    private const * pr = (private *)ht->prvtPart_; 
     Node ** curr = HASH(pr, key);
     
     while (*curr)
@@ -104,13 +103,18 @@ HashTable * Ht_Create(int size)
     ht->prvtPart_ = NULL;
     ht->prvtPart_ = malloc(sizeof(private));
     if (!ht->prvtPart_)
+    {
+        free(ht);
         return NULL;
-
+    }
     ((private *)(ht->prvtPart_))->size = size;
     ((private *)(ht->prvtPart_))->nodes = (Node **) calloc (sizeof(Node *), size);
     if (!((private *)(ht->prvtPart_))->nodes)
+    {   
+        free(ht->prvtPart_);
+        free(ht);
         return NULL;
-
+    }
     ht->Insert_ = &insert;
     ht->Find_ = &find;
     ht->Delete_ = &delete;
