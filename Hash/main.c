@@ -3,6 +3,17 @@
 
 int BrokenFlag = 0;
 
+int Sum(HashTable * ht, int * node_el, int * value)
+{
+    *value += *node_el;
+    return 0;
+}
+int SetNULL(HashTable * ht, int * node_el, int * value)
+{
+    *node_el = 0;
+    return 0;
+}
+
 int main() 
 {
     //Create part
@@ -52,6 +63,8 @@ int main()
     Ht_Find(ht, NULL, NULL);
     printf("%d\n", ERRNO); //3
     Ht_Delete(NULL, NULL);
+    Ht_for_each(NULL, &Sum, NULL);
+    printf("%d\n", ERRNO); //3
 
     HashTable * err = Ht_Create(0);
     printf("%d %p\n", ERRNO, err); //3 0
@@ -68,7 +81,18 @@ int main()
     Ht_Dump(NULL);
     Ht_Free(NULL);
 
-    
+    // FUNCT test
+    int sum = 0;
+    Ht_Insert(ht, "ASDFGHJK", 1);
+    Ht_Dump(ht);
+    Ht_for_each(ht, &Sum, &sum);
+    printf("sum = %d\n", sum); // 68741378
+
+    Ht_for_each(ht, &SetNULL, NULL);
+    Ht_Dump(ht);
+    sum = 0;
+    Ht_for_each(ht, &Sum, &sum);
+    printf("sum = %d\n", sum); //
    
     Ht_Free(ErrorSize);
     Ht_Free(ht);

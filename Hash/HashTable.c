@@ -211,3 +211,29 @@ void * new(size_t size_of, int count)
         --BrokenFlag;
     return calloc(size_of, count);
 }
+
+int Ht_for_each(HashTable * ht, int (*yf)(HashTable * ht, int * node_el, void * value), void * value)
+{
+    if (!ht)
+    {
+        ERRNO = E_wrongdata;
+        return -1;
+    }
+
+    private * pr = (private *)ht->prvtPart_; 
+    Node * curr = NULL;
+
+    int i = 0;
+
+    for (i = 0; i < pr->size; ++i)
+    {
+        int flag = 0;
+        curr = pr->nodes[i];
+        while(curr)
+        {
+            yf(ht, &curr->value, value);
+            curr = curr->next;
+        }
+    }
+    return 0;
+}
