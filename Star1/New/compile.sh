@@ -1,1 +1,0 @@
-gcc client.c -o c -pthread && gcc server.c -o s -pthread
