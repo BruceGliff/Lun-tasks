@@ -46,8 +46,11 @@ int Ht_Insert(HashTable * ht, char const * key, int value)
         ERRNO = E_alloc;
         return -1;
     }
-    if (asprintf(&(*curr)->key, key) == -1)
+    if (BrokenFlag || asprintf(&(*curr)->key, key) == -1)
     {
+        BrokenFlag = 0;
+        free(*curr);
+        *curr = NULL;
         ERRNO = E_alloc;
         return -1;
     }

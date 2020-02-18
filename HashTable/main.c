@@ -93,6 +93,11 @@ int main()
     sum = 0;
     Ht_for_each(ht, &Sum, &sum);
     printf("sum = %d\n", sum); //
+
+    //INSERT broke
+    BrokenFlag = 2;
+    Ht_Insert(ht, "RTYUI", 65748);
+    Ht_Dump(ht);
    
     Ht_Free(ErrorSize);
     Ht_Free(ht);
