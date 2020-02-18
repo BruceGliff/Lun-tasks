@@ -1,16 +1,34 @@
 #include <stdio.h>
 #include "HashTable.h"
 
+#define Ht_Dump Ht_for_each(ht, &Dump, NULL); printf("\n");
+
 int BrokenFlag = 0;
 
-int Sum(HashTable * ht, int * node_el, void * value)
+int Sum(HashTable * ht, UNode * node_el, void * value)
 {
-    *(int*)value += *node_el;
+    *(int*)value += node_el->value;
+    printf("KEYS!! %s \n", node_el->key);
     return 0;
 }
-int SetNULL(HashTable * ht, int * node_el, void * value)
+int SetNULL(HashTable * ht, UNode * node_el, void * value)
 {
-    *node_el = 0;
+    node_el->value = 0;
+    return 0;
+}
+
+int WrongEx(HashTable * ht, UNode * node_el, void * value)
+{
+    return -1;
+}
+int Ex(HashTable * ht, UNode * node_el, void * value)
+{
+    return 1;
+}
+
+int Dump(HashTable * ht, UNode * node_el, void * value)
+{
+    printf("%s--%d ", node_el->key, node_el->value);
     return 0;
 }
 
@@ -27,7 +45,7 @@ int main()
     Ht_Insert(ht, "DAGJSK", 62);
     Ht_Insert(ht, "AD", 5);
     Ht_Insert(ht, "fdgvbsdkfjgdsvbskdjfhsgvjdfhyvdjhmgdfkjvbdfugbvdkjfhgvdjkfvgjf", 68741265);
-    Ht_Dump(ht);
+    Ht_Dump;
 
     //Find test
     int val = 42;
@@ -38,18 +56,18 @@ int main()
     Ht_Find(ht, "ASD", &val);
     printf("%d\n", val); //42
     Ht_Insert(ht, "ASD", 578);
-    Ht_Dump(ht);
+    Ht_Dump;
 
     //Update
     Ht_Insert(ht, "ASD", 78);
-    Ht_Dump(ht);
+    Ht_Dump;
 
-    //Delete test
+    // Delete test
     Ht_Delete(ht, "ASD");
     Ht_Delete(ht, "AD");
     Ht_Delete(ht, "HGFJD");
     Ht_Delete(ht, "GFHJDKSL"); // delete wmth not in ht
-    Ht_Dump(ht);
+    Ht_Dump;
 
 
     //Broken tests
@@ -78,26 +96,27 @@ int main()
     err = Ht_Create(4);
     printf("%d %p\n", ERRNO, err); //1 0
 
-    Ht_Dump(NULL);
     Ht_Free(NULL);
 
     // FUNCT test
     int sum = 0;
     Ht_Insert(ht, "ASDFGHJK", 1);
-    Ht_Dump(ht);
+    Ht_Dump;
     Ht_for_each(ht, &Sum, &sum);
+    Ht_for_each(ht, &WrongEx, NULL);
+    Ht_for_each(ht, &Ex, NULL);
     printf("sum = %d\n", sum); // 68741378
 
     Ht_for_each(ht, &SetNULL, NULL);
-    Ht_Dump(ht);
+    Ht_Dump;
     sum = 0;
     Ht_for_each(ht, &Sum, &sum);
-    printf("sum = %d\n", sum); //
+    printf("sum = %d\n", sum); // 0
 
     //INSERT broke
     BrokenFlag = 2;
     Ht_Insert(ht, "RTYUI", 65748);
-    Ht_Dump(ht);
+    Ht_Dump;
    
     Ht_Free(ErrorSize);
     Ht_Free(ht);

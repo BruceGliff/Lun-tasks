@@ -3,11 +3,13 @@
 #include <string.h>
 #include <stdio.h>
 
+#define ret {ERRNO = E_success; return 0;}
+
 typedef struct Node
 {
     char * key;
     int value;
-    struct Node * next;   
+    struct Node * next;  
 } Node;
 typedef struct private
 {
@@ -16,6 +18,8 @@ typedef struct private
 } private;
 
 static void * new(size_t size_of, int count);
+static Node ** find(HashTable const * ht, char const * key);
+static int free_(HashTable * ht, UNode * node, void * value);
 static Node ** HASH(private const * pr, char const * key)
 {
     return &pr->nodes[key[0] % pr->size];
@@ -27,18 +31,13 @@ int Ht_Insert(HashTable * ht, char const * key, int value)
         ERRNO = E_wrongdata;
         return -1;
     }
+    Node ** curr = find(ht, key);
 
-    private const * pr = (private *)ht->prvtPart_;
-    Node ** curr = HASH(pr, key);
-    while(*curr)
+    if (*curr)
     {
-        if(strcmp((*curr)->key, key) == 0)
-        {
-            (*curr)->value = value;
-            ERRNO = E_recreate;
-            return 0;
-        }
-        curr = &(*curr)->next;
+        (*curr)->value = value;
+        ERRNO = E_recreate;
+        return 0;
     }
     (*curr) = (Node *) new(sizeof(Node), 1);
     if (!*curr)
@@ -54,9 +53,10 @@ int Ht_Insert(HashTable * ht, char const * key, int value)
         ERRNO = E_alloc;
         return -1;
     }
-    (*curr)->value = value;
 
-    return 0;
+    (*curr)->value = value;
+    
+    ret;
 }
 
 int Ht_Find(HashTable const * ht, char const * key, int * value)
@@ -67,19 +67,11 @@ int Ht_Find(HashTable const * ht, char const * key, int * value)
         return -1;
     }
 
-    private const * pr = (private *)ht->prvtPart_; 
-    Node const * curr = *HASH(pr, key);
-    while (curr)
-    {
-        if (strcmp(curr->key, key) == 0)
-        {
-            if(value)
-                *value = curr->value;
-            return 1;
-        }
-        curr = curr->next;
-    }
-    return 0;
+    Node * curr = *find(ht, key);
+    if (curr)
+        *value = curr->value;
+
+    ret;
 }
 int Ht_Delete(HashTable * ht, char const * key)
 {
@@ -89,23 +81,17 @@ int Ht_Delete(HashTable * ht, char const * key)
         return -1;
     }
 
-    private const * pr = (private *)ht->prvtPart_; 
-    Node ** curr = HASH(pr, key);
-    
-    while (*curr)
-    {
-        Node * prev = *curr;
-        if (strcmp((*curr)->key, key) == 0)
-        {
-            *curr = (*curr)->next;
-            free(prev->key);
-            free(prev);
-            return 0;
-        }
-        curr = &(*curr)->next;
-    }
+    Node ** curr = find(ht, key);
 
-    return 0;
+    if(!*curr)
+        ret;
+
+    Node * tmp = *curr;
+    *curr = (*curr)->next;
+    free(tmp->key);
+    free(tmp);
+
+    ret;
 }
 
 HashTable * Ht_Create(int size)
@@ -141,38 +127,8 @@ HashTable * Ht_Create(int size)
         ERRNO = E_alloc;
         return NULL;
     }
+    ERRNO = E_success;
     return ht;
-}
-
-int Ht_Dump(HashTable const * ht)
-{
-    if (!ht)
-    {
-        ERRNO = E_wrongdata;
-        return -1;
-    }
-
-    private * pr = (private *)ht->prvtPart_; 
-    Node * curr = NULL;
-
-    int i = 0;
-    printf("-----------------------\n");
-    for (i = 0; i < pr->size; ++i)
-    {
-        int flag = 0;
-        curr = pr->nodes[i];
-        while(curr)
-        {
-            printf("%s--%d ", curr->key, curr->value);
-            curr = curr->next;
-            flag = 1;
-        }
-        if (flag)
-            printf("\n");
-    }
-    printf("-----------------------\n\n");
-
-    return 0;
 }
 
 void Ht_Free(HashTable * ht)
@@ -184,38 +140,16 @@ void Ht_Free(HashTable * ht)
     }
 
     private * pr = (private *)ht->prvtPart_; 
-    Node * curr  = NULL;
+    Ht_for_each(ht, &free_, NULL);
 
-    int i = 0;
-    for (i = 0; i < pr->size; ++i)
-    {
-        curr = pr->nodes[i];
-        while(curr)
-        {
-            free(curr->key);
-            Node * tmp = curr->next;
-            free(curr);
-            curr = tmp;
-        }
-    }
     free(pr->nodes);
     free(pr);
     free(ht);
+
+    ERRNO = E_success;
 }
 
-void * new(size_t size_of, int count)
-{
-    if (BrokenFlag == 1)
-    {
-        --BrokenFlag;
-        return NULL;
-    }
-    if (BrokenFlag > 0)
-        --BrokenFlag;
-    return calloc(size_of, count);
-}
-
-int Ht_for_each(HashTable * ht, int (*yf)(HashTable * ht, int * node_el, void * value), void * value)
+int Ht_for_each(HashTable * ht, int (*yf)(HashTable * ht, UNode * node_el, void * value), void * value)
 {
     if (!ht || !yf)
     {
@@ -234,9 +168,59 @@ int Ht_for_each(HashTable * ht, int (*yf)(HashTable * ht, int * node_el, void * 
         curr = pr->nodes[i];
         while(curr)
         {
-            yf(ht, &curr->value, value);
-            curr = curr->next;
+            Node * tmp = curr->next;
+            int const status = yf(ht, (UNode *) curr, value);
+            if (status < 0)
+            {
+                ERRNO = E_WFunctExit;
+                return -1;
+            }
+            if (status > 0)
+            {
+                ERRNO = E_RFunctExit;
+                return 1;
+            }
+            
+            curr = tmp;
         }
     }
+    ret;
+}
+
+Node ** find(HashTable const * ht, char const * key)
+{
+    private const * pr = (private *)ht->prvtPart_; 
+    Node ** curr = HASH(pr, key);
+    while (*curr)
+    {
+        if (strcmp((*curr)->key, key) == 0)
+        {
+            return curr;
+        }
+        curr = &(*curr)->next;
+    }
+
+    return curr;
+}
+
+int free_(HashTable * ht, UNode * node, void * value)
+{
+    Node * curr = (Node *) node;
+    free(curr->key);
+    Node * tmp = curr->next;
+    free(curr);
+
     return 0;
+}
+
+void * new(size_t size_of, int count)
+{
+    if (BrokenFlag == 1)
+    {
+        --BrokenFlag;
+        return NULL;
+    }
+    if (BrokenFlag > 0)
+        --BrokenFlag;
+    return calloc(size_of, count);
 }
