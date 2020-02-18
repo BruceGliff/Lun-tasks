@@ -1,0 +1,1 @@
+gcc writer.c -o w -pthread && gcc reader.c -o r -pthread

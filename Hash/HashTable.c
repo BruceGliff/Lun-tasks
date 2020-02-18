@@ -214,7 +214,7 @@ void * new(size_t size_of, int count)
 
 int Ht_for_each(HashTable * ht, int (*yf)(HashTable * ht, int * node_el, void * value), void * value)
 {
-    if (!ht)
+    if (!ht || !yf)
     {
         ERRNO = E_wrongdata;
         return -1;

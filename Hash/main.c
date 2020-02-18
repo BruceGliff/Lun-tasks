@@ -3,12 +3,12 @@
 
 int BrokenFlag = 0;
 
-int Sum(HashTable * ht, int * node_el, int * value)
+int Sum(HashTable * ht, int * node_el, void * value)
 {
-    *value += *node_el;
+    *(int*)value += *node_el;
     return 0;
 }
-int SetNULL(HashTable * ht, int * node_el, int * value)
+int SetNULL(HashTable * ht, int * node_el, void * value)
 {
     *node_el = 0;
     return 0;
