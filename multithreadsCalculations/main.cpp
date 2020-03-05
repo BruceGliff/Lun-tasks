@@ -3,7 +3,6 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include <ctime>
 
 #include <unistd.h>
 
@@ -37,7 +36,6 @@ void integrate(double begin, double end, char * cash)
 
 int main(int argc, char * argv[])
 {
-    long long time = clock();
     double begin = -10e3;
     double end = 10e3;
 
