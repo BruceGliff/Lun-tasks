@@ -3,8 +3,6 @@
 
 #define Ht_Dump Ht_for_each(ht, &Dump, NULL); printf("\n");
 
-int BrokenFlag = 0;
-
 int Sum(HashTable * ht, UNode * node_el, void * value)
 {
     *(int*)value += node_el->value;
@@ -73,7 +71,7 @@ int main()
     //Broken tests
     Ht_Insert(ht, NULL, 654);
     printf("%d\n", ERRNO); //3
-    BrokenFlag = 1;
+
     Ht_Insert(ht, "GHFJDK", 789);
     printf("%d\n", ERRNO); //1
 
@@ -86,13 +84,10 @@ int main()
 
     HashTable * err = Ht_Create(0);
     printf("%d %p\n", ERRNO, err); //3 0
-    BrokenFlag = 1;
+
     err = Ht_Create(4);
     printf("%d %p\n", ERRNO, err); //1 0
-    BrokenFlag = 2;
-    err = Ht_Create(4);
-    printf("%d %p\n", ERRNO, err); //1 0
-    BrokenFlag = 3;
+
     err = Ht_Create(4);
     printf("%d %p\n", ERRNO, err); //1 0
 
@@ -114,10 +109,9 @@ int main()
     printf("sum = %d\n", sum); // 0
 
     //INSERT broke
-    BrokenFlag = 2;
+
     Ht_Insert(ht, "RTYUI", 65748);
     Ht_Dump;
-   
     Ht_Free(ErrorSize);
     Ht_Free(ht);
     return 0;

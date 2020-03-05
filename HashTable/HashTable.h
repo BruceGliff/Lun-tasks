@@ -9,7 +9,7 @@ enum EError
     E_RFunctExit
 } ERRNO;
 
-extern int BrokenFlag;
+//extern int BrokenFlag;
 
 typedef struct UNode
 {
@@ -17,10 +17,8 @@ typedef struct UNode
     int value;
 } UNode;
 
-typedef struct HashTable
-{
-    void * prvtPart_;
-} HashTable;
+struct HashTable;
+typedef struct HashTable HashTable;
 
 HashTable * Ht_Create(int size);
 int Ht_Find(HashTable const * ht, char const * key, int * value);
@@ -28,6 +26,3 @@ int Ht_Delete(HashTable * ht, char const * key);
 int Ht_Insert(HashTable * ht, char const * key, int const value);
 void Ht_Free(HashTable * ht);
 int Ht_for_each(HashTable * ht, int (*yf)(HashTable * ht, UNode * node_el, void * value), void * value);
-
-#define E       printf("ASad\n");\
-                fflush(NULL); 
