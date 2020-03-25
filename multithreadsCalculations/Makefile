@@ -1,2 +1,2 @@
 all:
-	g++ -pthread -o program.out main.cpp
+	g++ -pthread -O3 -o program.out main.cpp

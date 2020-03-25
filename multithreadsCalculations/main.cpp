@@ -6,6 +6,8 @@
 
 #include <unistd.h>
 
+#include "cpu_optimization.h"
+
 constexpr int deltaCache = 32;
 
 enum class Condition
@@ -24,27 +26,28 @@ void integrate(double begin, double end, char * cache) noexcept;
 struct MyThread
 {
     // Task part
-    double begin = -10e3;
-    double end = 10e3;
+    double const begin = -10e3;
+    double const end = 10e3;
     double del = 0.f;
 
+    // Info about CPU
+    CPU_info const info;
 
+    // Preparation part
     char * allCache_ = nullptr;
     std::thread * queue_ = nullptr;
-    int cacheSize = 128;
-    int threadsCount_ = 0;
-    int maxThreads = 0;
+    int const cacheSize = 128;
     int currentThreads = 0;
 
-    MyThread (int threadsCount) : threadsCount_(threadsCount), maxThreads(std::thread::hardware_concurrency())
+    MyThread (int threadsCount) : info{threadsCount}
     {
-        del = (end - begin) / threadsCount_;
-        allCache_ = new char[cacheSize * threadsCount_];
-        std::fill (allCache_, allCache_ + cacheSize * threadsCount_, 0);
+        del = (end - begin) / threadsCount;
+        allCache_ = new char[cacheSize * threadsCount];
+        std::fill (allCache_, allCache_ + cacheSize * threadsCount, 0);
 
-        if (threadsCount_ > 1)
+        if (threadsCount > 1)
         {
-            queue_ = (std::thread *) ::operator new (sizeof(std::thread) * (threadsCount_ - 1), std::nothrow);
+            queue_ = (std::thread *) ::operator new (sizeof(std::thread) * (threadsCount - 1), std::nothrow);
             if (!queue_)      
             {
                 delete[] allCache_;
@@ -55,7 +58,10 @@ struct MyThread
 
     void Launch()
     {
-        for(int i = 0; i != threadsCount_ - 1; ++i)
+        if (info.AlgToUse_ == EAlg::HyperThreads)
+            stick_this_thread_to_core(0, pthread_self());
+
+        for(int i = 0; i != info.usersThreads_ - 1; ++i)
         {  
             ++currentThreads;     
             new (&queue_[i]) std::thread    (std::thread{integrate, 
@@ -63,14 +69,18 @@ struct MyThread
                                             begin + (i + 1) * del,
                                             allCache_ + i * cacheSize + deltaCache
                                             });
+
+            if (i < info.threads_)
+                stick_this_thread_to_core(i + 1, queue_[i].native_handle());
+
             queue_[i].detach(); 
         }
     }
     void LaunchMain() const noexcept
     {
-        integrate   (begin + (threadsCount_ - 1) * del, 
-                    begin + threadsCount_ * del, 
-                    allCache_ + (threadsCount_ - 1) * cacheSize + deltaCache);
+        integrate   (begin + (info.usersThreads_ - 1) * del, 
+                    begin + info.usersThreads_ * del, 
+                    allCache_ + (info.usersThreads_ - 1) * cacheSize + deltaCache);
     }
 
     double Count() noexcept
@@ -78,7 +88,7 @@ struct MyThread
         double result = 0;
         while (!areThreadsDone()) {}
 
-        for (int i = 0; i != threadsCount_; ++i)
+        for (int i = 0; i != info.usersThreads_; ++i)
         {
             cacheLine * out = reinterpret_cast<cacheLine *>(allCache_ + i * cacheSize + deltaCache);
             result += out->out;
@@ -87,7 +97,7 @@ struct MyThread
         return result;
     }
 
-    bool areThreadsDone()
+    bool areThreadsDone() noexcept
     {
         for (int i = 0; i != currentThreads; ++i)
         {
@@ -108,7 +118,7 @@ struct MyThread
             queue_[i].~thread();
 
         delete[] allCache_;
-        if (threadsCount_ > 1)
+        if (info.usersThreads_ > 1)
             delete queue_;
     }
 };
@@ -139,8 +149,8 @@ int main(int argc, char * argv[])
     if (!threadsCount)
         return 0;
 
-    MyThread * Thread;
-   
+    MyThread * Thread = nullptr;
+
     try { 
         Thread = new MyThread{threadsCount};
     } 
