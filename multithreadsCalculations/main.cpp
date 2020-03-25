@@ -125,7 +125,7 @@ struct MyThread
 
 void integrate(double begin, double end, char * cache) noexcept
 {
-    double const desc = 10e-6;//-6
+    double const desc = 10e-6;
     cacheLine * out = reinterpret_cast<cacheLine *>(cache);
     out->status = Condition::inWork;
     double sum = 0;
