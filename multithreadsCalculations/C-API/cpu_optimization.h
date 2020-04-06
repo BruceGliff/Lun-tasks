@@ -33,7 +33,7 @@ struct CPU_info
 
     CPU_info() : ready_cpus(std::thread::hardware_concurrency()), algorithm(GetCpuConfiguration()) {}
 
-
+    // recieve propreate algorithm
     ECPU_Alg GetCpuConfiguration();
 };
 

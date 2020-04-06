@@ -1,3 +1,4 @@
+# pragma once
 #include "Task.h"
 #include "cpu_optimization.h"
 
@@ -82,15 +83,14 @@ struct Threads : public Task
         double res = 0;
         for (int i = 0; i != threadsCount_; ++i)
         {   
-            double out = 0;
             int const s = pthread_join(threads[i], NULL);
             if (s)
             {
                 std::cerr << "Cann't join thread" << std::endl;
                 exit(-1);
             }
-            cacheLine * cache = reinterpret_cast<cacheLine *>(allCache_ + i * cacheSize);
-            res += cache->out;
+            double const * out = reinterpret_cast<double *>(allCache_ + i * cacheSize);
+            res += *out;
         }
 
         //--------------------------

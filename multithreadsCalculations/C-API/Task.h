@@ -19,6 +19,7 @@ struct Task
     char *        allCache_ = nullptr;
     int           threadsCount_ = 0;
 
+    // function what execute in different threads
     static void* integrate(void * cache);
 
     Task(int threadsCount)
