@@ -5,16 +5,16 @@ constexpr int MAX_THREADS = 144;
 
 struct cacheLine
 {
+    double out;
     double begin;
     double end;
-    double out;
 };
 
 struct Task
 {
     int     const cacheSize = 128;
-    double  const begin = -10e3;
-    double  const end = 10e3;
+    double  const begin = -5e3;
+    double  const end = 5e3;
     double        del = 0.f;
     char *        allCache_ = nullptr;
     int           threadsCount_ = 0;
@@ -57,5 +57,4 @@ void* Task::integrate(void * cache)
     }
     out->out = sum;
 
-    return NULL;
 }

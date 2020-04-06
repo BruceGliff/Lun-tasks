@@ -1,6 +1,13 @@
 #include "Task.h"
 #include "cpu_optimization.h"
 
+#include <mutex>
+
+namespace LOCK
+{
+    std::mutex isEnd;
+}
+
 struct Threads : public Task
 {
     // memory for threads
@@ -9,7 +16,7 @@ struct Threads : public Task
     CPU_info const info{};
     
     // Create Task discription and memory for threads
-    Threads(int threadsCount) : Task{threadsCount}, threads( (pthread_t *) calloc (threadsCount_, sizeof(pthread_t)) ) {}
+    Threads(int threadsCount) : Task{threadsCount}, threads( (pthread_t *) calloc (threadsCount_ < info.ready_cpus / 2 ? info.ready_cpus / 2 : threadsCount_, sizeof(pthread_t)) ) {}
     ~Threads() { free(threads); }
 
     // Start calculating task
@@ -48,7 +55,28 @@ struct Threads : public Task
             exit(-1);
             break;
         }
-        
+
+        //--------------------------
+        //  create trash threads to hyperthread
+        LOCK::isEnd.lock();
+        for (int i = threadsCount_; i < info.ready_cpus / 2; ++i)
+        {
+            set_stick_attr(i, &attr);
+            int const s = pthread_create(&threads[i], &attr, Threads::TrashTask, NULL);
+            if (s)
+            {
+                std::cerr << "Cann't create thread" << std::endl;
+                exit(-1);
+            }
+            int const s1 = pthread_detach(threads[i]);
+            if (s1)
+            {
+                std::cerr << "Cann't detach thread" << std::endl;
+                exit(-1);
+            }
+        }
+
+       
         //--------------------------
         //   waiting till calculations are done
         double res = 0;
@@ -64,6 +92,10 @@ struct Threads : public Task
             cacheLine * cache = reinterpret_cast<cacheLine *>(allCache_ + i * cacheSize);
             res += cache->out;
         }
+
+        //--------------------------
+        //  waiting till trash is done
+        LOCK::isEnd.unlock();
 
         return res;
     }
@@ -98,5 +130,14 @@ struct Threads : public Task
         }
         
         return 0;
+    }
+
+    // Task to make free thread busy
+    static void* TrashTask(void * finish)
+    {
+        while(!LOCK::isEnd.try_lock()) {}
+        LOCK::isEnd.unlock();
+
+        return NULL;
     }
 };
