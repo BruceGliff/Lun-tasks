@@ -5,7 +5,13 @@ int inputParser(int argc, char * argv);
 
 int main(int argc, char * argv[])
 {
-    printf("%d", GetCpuConfiguration());
+    GetCpuConfiguration();
+    Threads_create(inputParser(argc, argv[1]));
+
+    
+    printf("%e\n", launch());
+
+    Threads_delete();
     return 0;
 }
 

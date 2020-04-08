@@ -24,8 +24,8 @@ struct Task
 int Task_create(int threadsCount)
 {
     TASK.cacheSize = 128;
-    TASK.begin = -5e3;
-    TASK.end = 5e3;
+    TASK.begin = -10e3;
+    TASK.end = 10e3;
 
 
     TASK.threadsCount_ = threadsCount < MAX_THREADS ? threadsCount : MAX_THREADS; 

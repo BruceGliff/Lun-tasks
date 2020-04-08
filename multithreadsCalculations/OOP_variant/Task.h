@@ -13,8 +13,8 @@ struct cacheLine
 struct Task
 {
     int     const cacheSize = 128;
-    double  const begin = -5e3;
-    double  const end = 5e3;
+    double  const begin = -10e3;
+    double  const end = 10e3;
     double        del = 0.f;
     char *        allCache_ = nullptr;
     int           threadsCount_ = 0;

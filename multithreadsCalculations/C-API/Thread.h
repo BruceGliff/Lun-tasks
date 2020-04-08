@@ -1,11 +1,11 @@
 # pragma once
-#include "Task.h"
-#include "cpu_optimization.h"
-
 #define _GNU_SOURCE 
 #include <pthread.h>
 #include <sched.h>
 #include <sys/sem.h>
+
+#include "Task.h"
+#include "cpu_optimization.h"
 
 struct semaphore
 {
@@ -22,13 +22,10 @@ struct Threads
 
 int semaphore_set()
 {
-    key_t const key = ftok("/tmp", 'b');
+    key_t const key = ftok("/tmp", 'a');
     SEM.sem_id = semget(key, 6, IPC_CREAT | IPC_EXCL | 0666);
-    if (SEM.sem_id == -1)
-    {
-        fprintf(stderr, "Cann't exec semget\n");
-        exit(-1);
-    }
+	if (SEM.sem_id == -1)
+		SEM.sem_id = semget(key, 6, 0666);	
 
 	SEM.set0_N.sem_num = 0;
     SEM.set0_N.sem_flg = 0;
@@ -112,7 +109,6 @@ double launch()
         fprintf(stderr, "Cann't init attr\n");
         exit(-1);
     }
-
 
     //--------------------------
     //  chose propreate algorithm
