@@ -124,8 +124,8 @@ double launch(Threads * THREAD, Task * TASK)
 
     //--------------------------
     //  killing trash threads
-    //for (int i = TASK->threadsCount_; i < CPU_info / 2; ++i)
-        //pthread_cancel(THREAD[i]);
+    for (int i = TASK->threadsCount_; i < CPU_info / 2; ++i)
+        pthread_cancel(THREAD[i]);
 
     return res;
 }

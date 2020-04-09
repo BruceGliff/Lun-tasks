@@ -20,7 +20,7 @@ int GetCpuConfiguration()
         return 4;
     }
 
-    char inData[10];
+    char inData[10] = "";
     if(read(fd, inData, 10) == 0)
     {
         close(fd);
