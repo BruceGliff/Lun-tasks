@@ -5,13 +5,14 @@ int inputParser(int argc, char * argv);
 
 int main(int argc, char * argv[])
 {
+    int const workingThreads = inputParser(argc, argv[1]);
     GetCpuConfiguration();
-    Threads_create(inputParser(argc, argv[1]));
+    Task * TASK = Task_create(workingThreads);
+    Threads * THREAD =  Threads_create(TASK);
+    printf("%e\n", launch(THREAD, TASK));
 
-    
-    printf("%e\n", launch());
-
-    Threads_delete();
+    Threads_delete(THREAD);
+    Task_delete(TASK);
     return 0;
 }
 

@@ -11,7 +11,7 @@ typedef struct cacheLine
     double end;
 } cacheLine;
 
-struct Task
+typedef struct Task
 {
     int      cacheSize;
     double   begin;
@@ -19,35 +19,41 @@ struct Task
     double   del;
     char *   allCache_;
     int      threadsCount_;
-} TASK;
+} Task;
 
-int Task_create(int threadsCount)
+Task * Task_create(int threadsCount)
 {
-    TASK.cacheSize = 128;
-    TASK.begin = -10e3;
-    TASK.end = 10e3;
+    Task * TASK = (Task *) malloc (sizeof(Task));
+    if (!TASK)
+    {
+        fprintf(stderr, "Can not allocate memory for Task!");
+        exit(-1);
+    }
+    TASK->cacheSize = 128;
+    TASK->begin = -10e3;
+    TASK->end = 10e3;
 
 
-    TASK.threadsCount_ = threadsCount < MAX_THREADS ? threadsCount : MAX_THREADS; 
+    TASK->threadsCount_ = threadsCount < MAX_THREADS ? threadsCount : MAX_THREADS; 
 
-    TASK.del = (TASK.end - TASK.begin) / TASK.threadsCount_;
-    TASK.allCache_ = (char *) calloc (sizeof(char), TASK.cacheSize * TASK.threadsCount_);
-    if (!TASK.allCache_)
+    TASK->del = (TASK->end - TASK->begin) / TASK->threadsCount_;
+    TASK->allCache_ = (char *) calloc (sizeof(char), TASK->cacheSize * TASK->threadsCount_);
+    if (!TASK->allCache_)
     {
         fprintf(stderr, "Can not allocate memory for cache!");
         exit(-1);
     }
 
-    return 0;
+    return TASK;
 }
     
-int Task_delete() { free(TASK.allCache_); return 0; }
+int Task_delete(Task * TASK) { free(TASK->allCache_); free(TASK); return 0; }
 
-void * Task_Get(int i)
+void * Task_Get(Task * TASK, int i)
 {
-    cacheLine * line = (cacheLine *)(TASK.allCache_ + i * TASK.cacheSize);
-    line->begin = TASK.begin + i * TASK.del;
-    line->end = TASK.begin + (i + 1) * TASK.del;
+    cacheLine * line = (cacheLine *)(TASK->allCache_ + i * TASK->cacheSize);
+    line->begin = TASK->begin + i * TASK->del;
+    line->end = TASK->begin + (i + 1) * TASK->del;
     return (void *) line;
 }
 

@@ -2,64 +2,28 @@
 #define _GNU_SOURCE 
 #include <pthread.h>
 #include <sched.h>
-#include <sys/sem.h>
+#include <stdio.h>
 
 #include "Task.h"
 #include "cpu_optimization.h"
 
-struct semaphore
-{
-    int sem_id;
-    struct sembuf set0_N;
-    struct sembuf minus1;
-} SEM;
-
 // memory for threads
-struct Threads
-{
-    pthread_t * threads;
-} THREAD;
+typedef pthread_t Threads;
 
-int semaphore_set()
-{
-    key_t const key = ftok("/tmp", 'a');
-    SEM.sem_id = semget(key, 6, IPC_CREAT | IPC_EXCL | 0666);
-	if (SEM.sem_id == -1)
-		SEM.sem_id = semget(key, 6, 0666);	
-
-	SEM.set0_N.sem_num = 0;
-    SEM.set0_N.sem_flg = 0;
-    SEM.set0_N.sem_op = 0;
-
-    SEM.minus1.sem_num = 0;
-    SEM.minus1.sem_flg = IPC_NOWAIT;
-    SEM.minus1.sem_op = -1;
-
-    return SEM.sem_id;
-}
-
-int semaphore_setN()
-{
-	SEM.set0_N.sem_num = 0;
-    SEM.set0_N.sem_flg = IPC_NOWAIT;
-    SEM.set0_N.sem_op = CPU_info / 2 - TASK.threadsCount_;
-
-    return 0;
-}
 
 // Task to make free thread busy
 void* TrashTask(void * finish)
 {
-    while(semop(SEM.sem_id, &SEM.minus1, 1) == -1) {}
-
+    int i = 0;
+    while(1) { ++i; }
     return NULL;
 }
 
 
 // Creating thread with param in attr
-int threadCreate(int indx, pthread_attr_t * attr)
+int threadCreate(Threads * THREAD, Task * TASK, int indx, pthread_attr_t * attr)
 {
-    int const s = pthread_create(&THREAD.threads[indx], attr, integrate, Task_Get(indx));
+    int const s = pthread_create(&THREAD[indx], attr, integrate, Task_Get(TASK, indx));
     if (s)
     {
         fprintf(stderr, "Cann't create thread\n");
@@ -87,17 +51,22 @@ int set_stick_attr(int core_id, pthread_attr_t * attr)
 }
     
 // Create Task discription and memory for threads
-int Threads_create(int threadsCount)
+Threads * Threads_create(Task * TASK)
 {
-    Task_create(threadsCount);
-    int const realTreads = TASK.threadsCount_ < CPU_info / 2 ? CPU_info / 2 : TASK.threadsCount_;
+    int const realTreads = TASK->threadsCount_ < CPU_info / 2 ? CPU_info / 2 : TASK->threadsCount_;
 
-    THREAD.threads = (pthread_t *) calloc (realTreads, sizeof(pthread_t));
+    Threads * THREAD = (Threads *) calloc (realTreads, sizeof(Threads));
+    if(!THREAD)
+    {
+        fprintf(stderr, "Cann't alloc memory for threads\n");
+        exit(-1);
+    }
+    return THREAD;
 }
-int Threads_delete() { free(THREAD.threads); Task_delete(); }
+int Threads_delete(Threads * THREAD) { free(THREAD);}
 
 // Start calculating task
-double launch()
+double launch(Threads * THREAD, Task * TASK)
 {
     //--------------------------
     //  init pthread parametrs
@@ -112,28 +81,24 @@ double launch()
 
     //--------------------------
     //  chose propreate algorithm
-    for (int i = 0; i !=  TASK.threadsCount_; ++i)
+    for (int i = 0; i !=  TASK->threadsCount_; ++i)
     {
         set_stick_attr(i % CPU_info, &attr);
-        threadCreate(i, &attr);
+        threadCreate(THREAD, TASK, i, &attr);
     }
-
 
     //--------------------------
     //  create trash threads to hyperthread
-    //  setup a semaphore
-    semop(semaphore_set(), &SEM.set0_N, 1);
-
-    for (int i = TASK.threadsCount_; i < CPU_info / 2; ++i)
+    for (int i = TASK->threadsCount_; i < CPU_info / 2; ++i)
     {
         set_stick_attr(i, &attr);
-        int const s = pthread_create(&THREAD.threads[i], &attr, TrashTask, NULL);
+        int const s = pthread_create(&THREAD[i], &attr, TrashTask, NULL);
         if (s)
         {
             fprintf(stderr, "Cann't create thread\n");
             exit(-1);
         }
-        int const s1 = pthread_detach(THREAD.threads[i]);
+        int const s1 = pthread_detach(THREAD[i]);
         if (s1)
         {
             fprintf(stderr, "Cann't detach thread\n");
@@ -145,22 +110,22 @@ double launch()
     //--------------------------
     //   waiting till calculations are done
     double res = 0;
-    for (int i = 0; i != TASK.threadsCount_; ++i)
+    for (int i = 0; i != TASK->threadsCount_; ++i)
     {   
-        int const s = pthread_join(THREAD.threads[i], NULL);
+        int const s = pthread_join(THREAD[i], NULL);
         if (s)
         {
             fprintf(stderr, "Cann't join thread\n");
             exit(-1);
         }
-        double const * out = (double *)(TASK.allCache_ + i * TASK.cacheSize);
+        double const * out = (double *)(TASK->allCache_ + i * TASK->cacheSize);
         res += *out;
     }
 
     //--------------------------
-    //  waiting till trash is done
-    semaphore_setN();
-    semop(SEM.sem_id, &SEM.set0_N, 1);
+    //  killing trash threads
+    //for (int i = TASK->threadsCount_; i < CPU_info / 2; ++i)
+        //pthread_cancel(THREAD[i]);
 
     return res;
 }
