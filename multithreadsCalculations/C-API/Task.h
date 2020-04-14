@@ -1,8 +1,9 @@
 # pragma once
 #include <stdlib.h>
 #include <stdio.h>
+#include <limits.h>
 
-#define MAX_THREADS 144
+#define MAX_THREADS INT_MAX
 
 typedef struct cacheLine
 {
