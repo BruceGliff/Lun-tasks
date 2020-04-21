@@ -1,7 +1,8 @@
 # pragma once
 #include <iostream>
+#include <climits>
 
-constexpr int MAX_THREADS = 144;
+constexpr int MAX_THREADS = INT_MAX;
 
 struct cacheLine
 {
@@ -13,8 +14,8 @@ struct cacheLine
 struct Task
 {
     int     const cacheSize = 128;
-    double  const begin = -10e3;
-    double  const end = 10e3;
+    double  const begin = -100e3;
+    double  const end = 100e3;
     double        del = 0.f;
     char *        allCache_ = nullptr;
     int           threadsCount_ = 0;
@@ -58,4 +59,5 @@ void* Task::integrate(void * cache)
     }
     out->out = sum;
 
+    return NULL;
 }
