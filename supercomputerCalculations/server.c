@@ -8,6 +8,7 @@
 #include <netdb.h> 
 #include <string.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 
 void castToWorker(struct sockaddr_in a);
 struct sockaddr_in rcvFromWorker();
@@ -25,12 +26,16 @@ int main()
     puts("after sleep");
 }
 
-void establichConnection(struct sockaddr_in workerAddr)
+void establichConnection(struct sockaddr_in workerAddr_)
 {
     int sk = socket(AF_INET, SOCK_STREAM, 0);
     if (sk < 0) 
         perror("ERROR opening socket");
 
+	struct sockaddr_in workerAddr;
+	memcpy(&workerAddr, &workerAddr_, sizeof(workerAddr));
+	workerAddr.sin_port = htons(101);
+    
     if (connect(sk, (struct sockaddr *) &workerAddr, sizeof(workerAddr)) < 0) 
         perror("ERROR connecting");
 
@@ -90,6 +95,7 @@ struct sockaddr_in rcvFromWorker()
             perror("cannot bind");
     }
 
+    while(1){
     char recvString[100];
     memset(&rec_addr, 0, recaddrlen);
     int res = recvfrom(bcast_sock, recvString, 99, 0, (struct sockaddr *) &rec_addr, &recaddrlen);
@@ -105,9 +111,10 @@ struct sockaddr_in rcvFromWorker()
         perror("CLOSE err in rcv");
 
     printf("Datagram size: %d.\n", res);
-    //printf("Datagram's IP address is: %s\n", inet_ntoa(rec_addr.sin_addr));
+    printf("Datagram's IP address is: %s\n", inet_ntoa(rec_addr.sin_addr));
     printf("Datagram's port is: %d\n", (int) ntohs(rec_addr.sin_port));
 
     puts("Rcv from serv end");
+    }
     return rec_addr;
 }

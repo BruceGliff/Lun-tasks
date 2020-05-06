@@ -10,14 +10,22 @@
 #include <unistd.h>
 #include <sys/ipc.h> 
 
+#define ERROR(a)    \
+    {               \
+        perror(a);  \
+        exit(-1);   \
+    }
+
 void broadcastToServer();
 struct sockaddr rcvFromServer();
-void establishConnection();
+void establishConnection(int port);
+int rcvPortFromServer();
 
 int main()
 {
     broadcastToServer();
-    establishConnection();
+    int port = rcvPortFromServer();
+    establishConnection(port);
 
 
     puts("before sleep");
@@ -27,23 +35,35 @@ int main()
     
     
 }
-void establishConnection()
+void establishConnection(int port)
 {
     int sk = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in serv_addr, cli_addr;
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(101);
+    serv_addr.sin_port = htons(port);
 
     if (bind(sk, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
-        perror("ERROR on binding");
+        ERROR("ERROR on binding");
 
     listen(sk, 5);
 
     int clilen = sizeof(cli_addr);
     int newsockfd = accept(sk, (struct sockaddr *) &cli_addr, &clilen);
     if (newsockfd < 0) 
-        perror("ERROR on accept");
+        ERROR("ERROR on accept");
+
+    int i = 0;
+    while (++i != 4)
+    {
+        char task[5];
+        task[4] = 0;
+        read(newsockfd, task, 4);
+        printf("%s\n", task);
+        write(newsockfd, "ANS", 3);
+    }
+
+    shutdown(newsockfd, SHUT_RDWR);
 
     puts("finish establ connectio");
 }
@@ -82,46 +102,44 @@ void broadcastToServer()
     return;
 }
 
-struct sockaddr rcvFromServer()
+int rcvPortFromServer()
 {
-    puts("Rcv from serv begin");
+    puts("Rcv from server begin");
     struct sockaddr_in serv_addr;
-    struct sockaddr rec_addr; int recaddrlen = sizeof(rec_addr);
-    int port = 101;
+    int recaddrlen = sizeof(struct sockaddr_in);
+
+    int port = 5;
     int bcast_sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (bcast_sock < 0)
-        perror("cannot create sock rcvFromServer\n");
+        ERROR("Err create broadcast socket");
     int broadcastEnable=1;
     if(setsockopt(bcast_sock,SOL_SOCKET,SO_BROADCAST,&broadcastEnable,sizeof(int)) == -1)
-    {
-            perror("setsockopt");
-    }
+        ERROR("Err set sockopt")
 
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_BROADCAST; // ANY
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
     serv_addr.sin_port = htons(port);
 
     if(bind(bcast_sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr))==-1)
     {
             close(bcast_sock);
-            perror("cannot bind");
+            ERROR("Err bind");
     }
 
-    char recvString[100];
-    memset(&rec_addr, 0, recaddrlen);
-    int res = recvfrom(bcast_sock, recvString, 99, 0, &rec_addr, &recaddrlen);
+    int serv_port;
+    int res = recvfrom(bcast_sock, &serv_port, 4, 0, NULL, NULL);
     if (res < 0)
     {
-        perror("cannot recieve");
+        close(bcast_sock);
+        ERROR("Err recvfrom");
     }
 
-    recvString[res] = '\0';
-    printf("Accept: %s\n", recvString);
+    printf("Accept: %d\n", serv_port);
 
     if(close(bcast_sock) == -1)
-        perror("CLOSE err in rcv");
-
+        ERROR("CLOSE err in rcv");
 
     puts("Rcv from serv end");
-    return rec_addr;
+    
+    return serv_port;
 }
