@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <sys/ipc.h> 
 
+#include "Task.h"
+
 #define ERROR(a)    \
     {               \
         perror(a);  \
@@ -18,8 +20,9 @@
 
 void broadcastToServer();
 struct sockaddr rcvFromServer();
-void establishConnection(int port, struct sockaddr_in * server);
-int rcvPortFromServer();
+int establishConnection(int port, struct sockaddr_in * server);
+int rcvPortFromServer(struct sockaddr_in * serv_addr);
+int work_with_task(int sk);
 
 int main()
 {
@@ -27,7 +30,8 @@ int main()
     struct sockaddr_in server;
     int port = rcvPortFromServer(&server);
     printf("%d\n", port);
-    establishConnection(port, &server);
+    int sk = establishConnection(port, &server);
+    work_with_task(sk);
 
 
     puts("before sleep");
@@ -37,7 +41,29 @@ int main()
     
     
 }
-void establishConnection(int port, struct sockaddr_in * server)
+
+
+int work_with_task(int sk)
+{
+    puts("Begin work with task");
+    while(1)
+    {
+        Task t;
+        int res = read(sk, &t, sizeof(Task));
+        if (res != sizeof(Task))
+            ERROR("Err read task")
+        printf("%f %f\n", t.begin, t.end);
+        double ans = 5;
+        sleep(2);
+        res = write(sk, &ans, sizeof(double));
+        if (res != sizeof(double))
+            ERROR("Err write task")
+    }
+
+}
+
+
+int establishConnection(int port, struct sockaddr_in * server)
 {
     puts("begin establish connection");
     int sk = socket(AF_INET, SOCK_STREAM, 0);
@@ -52,12 +78,9 @@ void establishConnection(int port, struct sockaddr_in * server)
     if (connect(sk, (struct sockaddr *) &serverAddr, sizeof(serverAddr)) < 0) 
         perror("ERROR connecting");
 
-    char b[100];
-    int n = read(sk, b, 2);
-    if (n < 0) 
-        perror("ERROR writing to socket");
-
     puts("end establish connection");
+
+    return sk;
 }
 
 void broadcastToServer()
@@ -120,7 +143,7 @@ int rcvPortFromServer(struct sockaddr_in * serv_addr)
 
     int serv_port;
 
-    int l = sizeof(struct sockaddr_in);
+    socklen_t l = sizeof(sockaddr_in);
     int res = recvfrom(bcast_sock, &serv_port, 4, 0, (struct sockaddr *)serv_addr, &l);
     if (res < 0)
     {

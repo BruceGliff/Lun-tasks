@@ -1,6 +1,6 @@
 all:
-	gcc -std=c99 worker.c -o worker
-	gcc -std=c99 server.c -o server
+	g++ -std=c++98 worker.cc -o worker
+	#gcc -std=c99 server.c -o server
 
 new:
-	gcc -std=c99 -pthread SWorkerReciever.c serverMain.c -o test
+	g++ -std=c++98 -pthread SWorkerReciever.cc serverMain.cc Task.cc STaskSender.cc -o test

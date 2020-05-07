@@ -36,7 +36,7 @@ int rcvFromWorker(struct sockaddr_in * worker_addr)
 {
     puts("Rcv from worker begin");
     struct sockaddr_in serv_addr;
-    int recaddrlen = sizeof(struct sockaddr_in);
+    socklen_t recaddrlen = sizeof(struct sockaddr_in);
 
     int port = 101;
     int bcast_sock = socket(AF_INET, SOCK_DGRAM, 0);
