@@ -18,14 +18,16 @@
 
 void broadcastToServer();
 struct sockaddr rcvFromServer();
-void establishConnection(int port);
+void establishConnection(int port, struct sockaddr_in * server);
 int rcvPortFromServer();
 
 int main()
 {
     broadcastToServer();
-    int port = rcvPortFromServer();
-    establishConnection(port);
+    struct sockaddr_in server;
+    int port = rcvPortFromServer(&server);
+    printf("%d\n", port);
+    establishConnection(port, &server);
 
 
     puts("before sleep");
@@ -35,37 +37,27 @@ int main()
     
     
 }
-void establishConnection(int port)
+void establishConnection(int port, struct sockaddr_in * server)
 {
+    puts("begin establish connection");
     int sk = socket(AF_INET, SOCK_STREAM, 0);
-    struct sockaddr_in serv_addr, cli_addr;
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(port);
+    if (sk < 0) 
+        perror("ERROR opening socket");
 
-    if (bind(sk, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
-        ERROR("ERROR on binding");
+	struct sockaddr_in serverAddr;
+	serverAddr.sin_family = AF_INET;
+    memcpy(&serverAddr.sin_addr, &server->sin_addr, sizeof(serverAddr.sin_addr));
+    serverAddr.sin_port = htons(port);
+    
+    if (connect(sk, (struct sockaddr *) &serverAddr, sizeof(serverAddr)) < 0) 
+        perror("ERROR connecting");
 
-    listen(sk, 5);
+    char b[100];
+    int n = read(sk, b, 2);
+    if (n < 0) 
+        perror("ERROR writing to socket");
 
-    int clilen = sizeof(cli_addr);
-    int newsockfd = accept(sk, (struct sockaddr *) &cli_addr, &clilen);
-    if (newsockfd < 0) 
-        ERROR("ERROR on accept");
-
-    int i = 0;
-    while (++i != 4)
-    {
-        char task[5];
-        task[4] = 0;
-        read(newsockfd, task, 4);
-        printf("%s\n", task);
-        write(newsockfd, "ANS", 3);
-    }
-
-    shutdown(newsockfd, SHUT_RDWR);
-
-    puts("finish establ connectio");
+    puts("end establish connection");
 }
 
 void broadcastToServer()
@@ -102,10 +94,10 @@ void broadcastToServer()
     return;
 }
 
-int rcvPortFromServer()
+int rcvPortFromServer(struct sockaddr_in * serv_addr)
 {
     puts("Rcv from server begin");
-    struct sockaddr_in serv_addr;
+    struct sockaddr_in my_addr;
     int recaddrlen = sizeof(struct sockaddr_in);
 
     int port = 5;
@@ -116,18 +108,20 @@ int rcvPortFromServer()
     if(setsockopt(bcast_sock,SOL_SOCKET,SO_BROADCAST,&broadcastEnable,sizeof(int)) == -1)
         ERROR("Err set sockopt")
 
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(port);
+    my_addr.sin_family = AF_INET;
+    my_addr.sin_addr.s_addr = INADDR_ANY;
+    my_addr.sin_port = htons(port);
 
-    if(bind(bcast_sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr))==-1)
+    if(bind(bcast_sock, (struct sockaddr *) &my_addr, sizeof(my_addr))==-1)
     {
             close(bcast_sock);
             ERROR("Err bind");
     }
 
     int serv_port;
-    int res = recvfrom(bcast_sock, &serv_port, 4, 0, NULL, NULL);
+
+    int l = sizeof(struct sockaddr_in);
+    int res = recvfrom(bcast_sock, &serv_port, 4, 0, (struct sockaddr *)serv_addr, &l);
     if (res < 0)
     {
         close(bcast_sock);

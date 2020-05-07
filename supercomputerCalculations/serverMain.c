@@ -16,6 +16,9 @@
         exit(-1);   \
     }
 
+
+int establishConnection(int port);
+
 int main()
 {
     //create pipe for structures and pthread
@@ -26,7 +29,7 @@ int main()
         ERROR("Err create pipe");
 
     pthread_t sync_th;
-    if (pthread_create(&sync_th, NULL, reciever, &pipefd[1]) != 0)
+    if (pthread_create(&sync_th, NULL, reciever, NULL) != 0)
         ERROR("Err create thread");
 
 
@@ -41,14 +44,19 @@ int main()
     listen(listen_sk, 256);
 
     while(1)
-    {
+    { 
+        BEGIN:
         memset(&worker_addr, 0, size_addr);
-        int newSocket = accept(listen_sk, &worker_addr, size_addr);
+        int a=0;
+        puts("ACCEPT:");
+        int newSocket = accept(listen_sk, (struct sockaddr *) &worker_addr, &a);
+        printf("%d\n", newSocket);
+        goto BEGIN;
         if (newSocket == -1)
             ERROR("Err accept");
-        th_queue[free_indx] = (pthread_t *) malloc (sizeof(pthread_t));
-        if (pthread_create(th_queue[free_indx++], NULL, reciever,) != 0)
-            ERROR("Err create thread");
+        th_queue[free_indx] = (struct pthread_t *) malloc (sizeof(pthread_t));
+        //if (pthread_create(th_queue[free_indx++], NULL, reciever,) != 0)
+            //ERROR("Err create thread");
     }
 
     close(pipefd[0]);

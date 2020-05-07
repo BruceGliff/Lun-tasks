@@ -11,31 +11,24 @@
 #define ERROR(a)    \
     {               \
         perror(a);  \
-        exit(-1);   \
+        abort();    \
     }
 
 
 int rcvFromWorker(struct sockaddr_in * worker_addr);
-void SendPortToWorker(int port, struct sockaddr_in worker_addr);
+void SendPortToWorker(int port, struct sockaddr_in * worker_addr);
 
 void * reciever(void * data)
-{
-    int fd = *((int *)data);
-    
+{ 
     struct sockaddr_in worker_addr;
     int const size_addr = sizeof(struct sockaddr_in);
 
     while(1)
     {
-        rcvFromWorker(&worker_addr);
-        if (write(fd, &worker_addr, size_addr) != size_addr)
-            ERROR("Err write addr");
-        
-        // sendPortToWorker
+        rcvFromWorker(&worker_addr);    
+        SendPortToWorker(100, &worker_addr);
     }
 
-
-    close(fd);
     return NULL;
 }
 
@@ -84,7 +77,7 @@ int rcvFromWorker(struct sockaddr_in * worker_addr)
 }
 
 
-void SendPortToWorker(int port, struct sockaddr_in worker_addr)
+void SendPortToWorker(int port, struct sockaddr_in * worker_addr)
 {
     puts("Sending begin...");
 
@@ -98,10 +91,12 @@ void SendPortToWorker(int port, struct sockaddr_in worker_addr)
         ERROR("cannot set up socket for broadcast\n");
 
 
-    worker_addr.sin_family = AF_INET;
-    worker_addr.sin_port = htons(5);
+    struct sockaddr_in to_worker;
+    to_worker.sin_family = AF_INET;
+    memcpy(&to_worker.sin_addr, &worker_addr->sin_addr, sizeof(to_worker.sin_addr));
+    to_worker.sin_port = htons(5);
 
-    if(sendto(bcast_sock, &port, sizeof(int), 0, (struct sockaddr *)&worker_addr, sizeof(struct sockaddr_in)) < 0)
+    if(sendto(bcast_sock, &port, sizeof(int), 0, (struct sockaddr *)&to_worker, sizeof(struct sockaddr_in)) < 0)
         ERROR("sendto");
 
     if(close(bcast_sock))
