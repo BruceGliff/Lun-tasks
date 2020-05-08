@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <sys/ipc.h> 
 
-#include "Task.h"
+#include "Thread.h"
 
 #define ERROR(a)    \
     {               \
@@ -34,11 +34,6 @@ int main()
     work_with_task(sk);
 
 
-    puts("before sleep");
-    sleep(1);
-    puts("after sleep");
-
-    
     
 }
 
@@ -46,6 +41,7 @@ int main()
 int work_with_task(int sk)
 {
     puts("Begin work with task");
+    int th = GetCpuConfiguration();
     while(1)
     {
         Task t;
@@ -54,7 +50,16 @@ int work_with_task(int sk)
             ERROR("Err read task")
         printf("%f %f\n", t.begin, t.end);
         double ans = 5;
-        sleep(2);
+        
+        Task_local * TASK = Task_create(CPU_info, &t);
+        
+        Threads * THREAD =  Threads_create(TASK);
+        ans = launch(THREAD, TASK);
+        printf("%e\n", ans);
+        
+        Threads_delete(THREAD);
+    	Task_delete(TASK);
+        
         res = write(sk, &ans, sizeof(double));
         if (res != sizeof(double))
             ERROR("Err write task")
