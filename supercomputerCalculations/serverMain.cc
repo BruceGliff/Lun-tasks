@@ -73,7 +73,7 @@ int main()
     for (int i = 0; i != free_indx; ++i)
         pthread_join(th_queue[i], NULL);
 
-    printf("RESULT: %f\n", res);
+    printf("RESULT: %e\n", res);
 
     pthread_mutex_unlock(&mutex);
 

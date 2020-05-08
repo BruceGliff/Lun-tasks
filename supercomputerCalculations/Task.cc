@@ -28,7 +28,7 @@ TasksQueue::TasksQueue(int fd) : pipe_fd(fd)
     {
         double b = begin + del * i;
         double e = b + del;
-        Task t = {begin + del * i, begin + del * (i + 1), 10e-6};
+        Task t = {begin + del * i, begin + del * (i + 1), 10e-5};
         tasks.push_back(t);
         queue.push_back(i);
     }
