@@ -7,6 +7,7 @@
 TasksQueue::TasksQueue()
 {
     tasks_count = 20;
+    in_queue = tasks_count;
     begin = -10e6;
     end   = 10e6;
     del = (end - begin) / tasks_count;
@@ -46,5 +47,12 @@ void TasksQueue::Write_result(double res)
 {
     pthread_mutex_lock(&m_res);
     result.push_back(res);
+    --in_queue;
     pthread_mutex_unlock(&m_res);
+}
+void TasksQueue::pushTash(Task const & task)
+{
+    pthread_mutex_lock(&m_pop);
+    queue.push_back(task);
+    pthread_mutex_unlock(&m_pop);
 }

@@ -25,12 +25,14 @@ struct TasksQueue
     double begin;
     double end;
     double del;
+    int in_queue;
     std::vector<Task> queue;
     std::vector<double> result;
     pthread_mutex_t m_pop;
     pthread_mutex_t m_res;
 
     int getTask(Task * task);
+    void pushTash(Task const & task);
     void Write_result(double res);
     TasksQueue();
 

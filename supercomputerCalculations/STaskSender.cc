@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "STaskSender.h"
 #include "Task.h"
@@ -27,6 +28,7 @@ void * TaskSender(void * data)
         if (res != sizeof(Task))
         {   
             perror("Connection lost");
+            q->pushTash(t);
             if (shutdown(s_fd, SHUT_RDWR) == -1)
                 ERROR("Err shutdown sk");
             return NULL;
@@ -36,13 +38,13 @@ void * TaskSender(void * data)
         if (res != sizeof(double))
         {
             perror("Connection lost");
+            q->pushTash(t);
             if (shutdown(s_fd, SHUT_RDWR) == -1)
                 ERROR("Err shutdown sk");
             return NULL;
         }
 
         q->Write_result(result);
-
         puts("end send task");
     }
 
