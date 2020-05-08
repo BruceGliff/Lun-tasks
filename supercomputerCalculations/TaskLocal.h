@@ -12,6 +12,7 @@ typedef struct cacheLine
     double out;
     double begin;
     double end;
+    double desc;
 } cacheLine;
 
 typedef struct Task_local
@@ -20,6 +21,7 @@ typedef struct Task_local
     double   begin;
     double   end;
     double   del;
+    double   desc;
     char *   allCache_;
     int      threadsCount_;
 } Task_local;
@@ -35,6 +37,7 @@ Task_local * Task_create(int threadsCount, Task * t)
     TASK->cacheSize = 128;
     TASK->begin = t->begin;
     TASK->end = t->end;
+    TASK->desc = t->del;
 
 
     TASK->threadsCount_ = threadsCount < MAX_THREADS ? threadsCount : MAX_THREADS; 
@@ -57,15 +60,17 @@ void * Task_Get(Task_local * TASK, int i)
     cacheLine * line = (cacheLine *)(TASK->allCache_ + i * TASK->cacheSize);
     line->begin = TASK->begin + i * TASK->del;
     line->end = TASK->begin + (i + 1) * TASK->del;
+    line->desc = TASK->desc;
     return (void *) line;
 }
 
 
 void* integrate(void * cache)
 {
-    double const desc = 10e-4;
     cacheLine * out = (cacheLine *)cache;
     double sum = 0;
+    double const desc = out->desc;
+
     while (out->begin <= out->end)
     {
         sum += out->begin * out->begin * desc;
