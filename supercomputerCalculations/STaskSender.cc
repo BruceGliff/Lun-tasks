@@ -23,12 +23,14 @@ void * TaskSender(void * data)
     Task t;
     while(!q->getTask(&t))
     {
+        if (t.del == 0)
+            continue;
         puts("send task");
         int res = write(s_fd, &t, sizeof(Task));
         if (res != sizeof(Task))
         {   
-            perror("Connection lost");
-            q->pushTash(t);
+            perror("Connection lost write");
+            q->push_task(t.it);
             if (shutdown(s_fd, SHUT_RDWR) == -1)
                 ERROR("Err shutdown sk");
             return NULL;
@@ -37,14 +39,15 @@ void * TaskSender(void * data)
         res = read(s_fd, &result, sizeof(double));
         if (res != sizeof(double))
         {
-            perror("Connection lost");
-            q->pushTash(t);
+            perror("Connection lost read");
+            q->push_task(t.it);
             if (shutdown(s_fd, SHUT_RDWR) == -1)
                 ERROR("Err shutdown sk");
             return NULL;
         }
 
-        q->Write_result(result);
+        q->write_result(result, t.it);
+
         puts("end send task");
     }
 

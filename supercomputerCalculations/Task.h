@@ -2,38 +2,35 @@
 
 #include <vector>
 #include <pthread.h>
-
-enum EStatus
-{
-    IN_QUEUE,
-    SENDED,
-    FINISHED,
-    ERROR
-};
+#include <list>
 
 struct Task
 {
     double begin;
     double end;
     double del;
-    double res;
+    std::list<int>::iterator it;
 };
 
 struct TasksQueue
 {
     int tasks_count;
+    int pipe_fd;
     double begin;
     double end;
     double del;
     int in_queue;
-    std::vector<Task> queue;
+    std::vector<Task> tasks;
+    std::vector<int> queue;
     std::vector<double> result;
+    std::list<int> in_work;
     pthread_mutex_t m_pop;
     pthread_mutex_t m_res;
 
     int getTask(Task * task);
-    void pushTash(Task const & task);
-    void Write_result(double res);
-    TasksQueue();
+    void push_task(std::list<int>::iterator it);
+    void write_result(double res, std::list<int>::iterator it);
+    void delete_task(std::list<int>::iterator it);
+    TasksQueue(int fd);
 
 };
