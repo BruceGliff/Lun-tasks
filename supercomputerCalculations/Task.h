@@ -3,8 +3,6 @@
 #include <vector>
 #include <pthread.h>
 
-#define TASKS_COUNT 1000
-
 enum EStatus
 {
     IN_QUEUE,

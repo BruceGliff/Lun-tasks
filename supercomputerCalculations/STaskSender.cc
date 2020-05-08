@@ -25,7 +25,12 @@ void * TaskSender(void * data)
         puts("send task");
         int res = write(s_fd, &t, sizeof(Task));
         if (res != sizeof(Task))
-            ERROR("Err send task");
+        {   
+            perror("Connection lost");
+            if (shutdown(s_fd, SHUT_RDWR) == -1)
+                ERROR("Err shutdown sk");
+            return NULL;
+        }
         double result = 0;
         res = read(s_fd, &result, sizeof(double));
         if (res != sizeof(double))

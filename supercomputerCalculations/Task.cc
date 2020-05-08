@@ -6,7 +6,7 @@
 
 TasksQueue::TasksQueue()
 {
-    tasks_count = 1000;
+    tasks_count = 20;
     begin = -10e6;
     end   = 10e6;
     del = (end - begin) / tasks_count;
@@ -27,9 +27,11 @@ int TasksQueue::getTask(Task * task)
 {
     pthread_mutex_lock(&m_pop);
 
-    if (queue.empty())  
+    if (queue.empty())
+    {
+        pthread_mutex_unlock(&m_pop);
         return 1;
-
+    }
     Task t = queue.back();
     queue.pop_back();
 
