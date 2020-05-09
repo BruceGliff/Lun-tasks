@@ -41,7 +41,6 @@ int main(int argc, char ** argv)
     struct sockaddr_in server;
     int port = rcvPortFromServer(&server);
     pthread_cancel(broadcast_th);
-    printf("%d\n", port);
     int sk = establishConnection(port, &server);
     work_with_task(sk);
 
@@ -59,7 +58,7 @@ int work_with_task(int sk)
         Task t;
         int res = read(sk, &t, sizeof(Task));
         if (res != sizeof(Task))
-            ERROR("Err read task")
+            ERROR("End work with task")
         printf("%f %f\n", t.begin, t.end);
         double ans = 5;
         
@@ -82,7 +81,7 @@ int work_with_task(int sk)
 
 int establishConnection(int port, struct sockaddr_in * server)
 {
-    puts("begin establish connection");
+    puts("Begin establish connection");
     int sk = socket(AF_INET, SOCK_STREAM, 0);
     if (sk < 0) 
         perror("ERROR opening socket");
@@ -95,14 +94,14 @@ int establishConnection(int port, struct sockaddr_in * server)
     if (connect(sk, (struct sockaddr *) &serverAddr, sizeof(serverAddr)) < 0) 
         perror("ERROR connecting");
 
-    puts("end establish connection");
+    puts("End establish connection");
 
     return sk;
 }
 
 void * broadcastToServer(void *)
 {
-    puts("BroadCastBegin");
+    puts("Broadast begin");
 
     struct sockaddr_in ToServer;
     int port = 101;
@@ -159,7 +158,7 @@ int rcvPortFromServer(struct sockaddr_in * serv_addr)
     if(bind(bcast_sock, (struct sockaddr *) &my_addr, sizeof(my_addr))==-1)
     {
             close(bcast_sock);
-            ERROR("Err bind");
+            ERROR("Err bind, pls set new port (default 5)");
     }
 
     int serv_port;
@@ -172,7 +171,7 @@ int rcvPortFromServer(struct sockaddr_in * serv_addr)
         ERROR("Err recvfrom");
     }
 
-    printf("Accept: %d\n", serv_port);
+    printf("Accept port: %d\n", serv_port);
 
     if(close(bcast_sock) == -1)
         ERROR("CLOSE err in rcv");
