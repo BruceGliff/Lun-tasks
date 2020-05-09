@@ -25,12 +25,16 @@ void * TaskSender(void * data)
     {
         if (t.del == 0)
             continue;
-        puts("send task");
+
+        int task_num = *t.it;
+        printf("Send task [%4d] -------------v\n", task_num);
         int res = write(s_fd, &t, sizeof(Task));
         if (res != sizeof(Task))
         {   
             perror("Connection lost write");
             q->push_task(t.it);
+                    
+            printf("Task will [%4d] be resended -^\n", task_num);
             if (shutdown(s_fd, SHUT_RDWR) == -1)
                 ERROR("Err shutdown sk");
             return NULL;
@@ -41,6 +45,7 @@ void * TaskSender(void * data)
         {
             perror("Connection lost read");
             q->push_task(t.it);
+            printf("Task will [%4d] be resended -^\n", task_num);
             if (shutdown(s_fd, SHUT_RDWR) == -1)
                 ERROR("Err shutdown sk");
             return NULL;
@@ -48,7 +53,7 @@ void * TaskSender(void * data)
 
         q->write_result(result, t.it);
 
-        puts("end send task");
+        printf("Task done [%4d] -------------^\n", task_num);
     }
 
     if (shutdown(s_fd, SHUT_RDWR) == -1)

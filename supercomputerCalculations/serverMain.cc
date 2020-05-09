@@ -108,7 +108,7 @@ int establishConnection(int port)
     serv_addr.sin_port = htons(port);
 
     if (bind(sk, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
-        ERROR("ERROR on binding");
+        ERROR("Err on binding");
 
     return sk;    
 }
