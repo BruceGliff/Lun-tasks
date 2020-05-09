@@ -120,8 +120,8 @@ void * broadcastToServer(void *)
     ToServer.sin_port = htons(port);
 
 int tries = 0;
-while(++tries != 6) {
-	printf("Try [%d - 5]\n", tries);
+while(++tries != 11) {
+	printf("Try [%d - 10]\n", tries);
     if(sendto(bcast_sock, &broadcast_port, sizeof(int), 0, (struct sockaddr *)&ToServer, sizeof(struct sockaddr_in)) < 0)
         perror("sendto");
     sleep(1);
