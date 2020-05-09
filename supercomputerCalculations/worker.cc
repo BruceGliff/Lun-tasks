@@ -18,17 +18,29 @@
         exit(-1);   \
     }
 
-void broadcastToServer();
+void * broadcastToServer(void *);
 struct sockaddr rcvFromServer();
 int establishConnection(int port, struct sockaddr_in * server);
 int rcvPortFromServer(struct sockaddr_in * serv_addr);
 int work_with_task(int sk);
 
-int main()
+int broadcast_port = 0;
+
+int main(int argc, char ** argv)
 {
-    broadcastToServer();
+	if (argc == 1)
+		broadcast_port = 5;
+	else
+		broadcast_port = strtol(argv[1], NULL, 10);
+
+	pthread_t broadcast_th;
+	if (pthread_create (&broadcast_th, NULL, broadcastToServer, NULL) == -1)
+		ERROR("Err create broadcast thread");
+	 
+//    broadcastToServer();
     struct sockaddr_in server;
     int port = rcvPortFromServer(&server);
+    pthread_cancel(broadcast_th);
     printf("%d\n", port);
     int sk = establishConnection(port, &server);
     work_with_task(sk);
@@ -88,10 +100,9 @@ int establishConnection(int port, struct sockaddr_in * server)
     return sk;
 }
 
-void broadcastToServer()
+void * broadcastToServer(void *)
 {
     puts("BroadCastBegin");
-
 
     struct sockaddr_in ToServer;
     int port = 101;
@@ -109,17 +120,22 @@ void broadcastToServer()
     ToServer.sin_addr.s_addr = INADDR_BROADCAST; // ANY
     ToServer.sin_port = htons(port);
 
-    char const * mess = "TOSERVER";
-
-    if(sendto(bcast_sock, mess, strlen(mess), 0, (struct sockaddr *)&ToServer, sizeof(struct sockaddr_in)) < 0)
+int tries = 0;
+while(++tries != 6) {
+	printf("Try [%d - 5]\n", tries);
+    if(sendto(bcast_sock, &broadcast_port, sizeof(int), 0, (struct sockaddr *)&ToServer, sizeof(struct sockaddr_in)) < 0)
         perror("sendto");
+    sleep(1);
+}
 
     if(close(bcast_sock))
         perror("close worker");
 
-    puts("BroadcastEnd");
 
-    return;
+    puts("Cannot establish connection");
+    exit(-1);
+
+    return NULL;
 }
 
 int rcvPortFromServer(struct sockaddr_in * serv_addr)
@@ -128,7 +144,7 @@ int rcvPortFromServer(struct sockaddr_in * serv_addr)
     struct sockaddr_in my_addr;
     int recaddrlen = sizeof(struct sockaddr_in);
 
-    int port = 5;
+    int port = broadcast_port;
     int bcast_sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (bcast_sock < 0)
         ERROR("Err create broadcast socket");

@@ -25,8 +25,8 @@ void * reciever(void * data)
 
     while(1)
     {
-        rcvFromWorker(&worker_addr);    
-        SendPortToWorker(100, &worker_addr);
+        int port = rcvFromWorker(&worker_addr);  
+        SendPortToWorker(port, &worker_addr);
     }
 
     return NULL;
@@ -56,24 +56,23 @@ int rcvFromWorker(struct sockaddr_in * worker_addr)
             ERROR("Err bind");
     }
 
-    char recvString[100];
+    int port_ans = 0;
     memset(worker_addr, 0, recaddrlen);
-    int res = recvfrom(bcast_sock, recvString, 99, 0, (struct sockaddr *) worker_addr, &recaddrlen);
+    int res = recvfrom(bcast_sock, &port_ans, sizeof(int), 0, (struct sockaddr *) worker_addr, &recaddrlen);
     if (res < 0)
     {
         close(bcast_sock);
         ERROR("Err recvfrom");
     }
 
-    recvString[res] = '\0';
-    printf("Accept: %s\n", recvString);
+    printf("Accept port: %d\n", port_ans);
 
     if(close(bcast_sock) == -1)
         ERROR("CLOSE err in rcv");
 
     puts("Rcv from serv end");
     
-    return 0;
+    return port_ans;
 }
 
 
@@ -94,9 +93,11 @@ void SendPortToWorker(int port, struct sockaddr_in * worker_addr)
     struct sockaddr_in to_worker;
     to_worker.sin_family = AF_INET;
     memcpy(&to_worker.sin_addr, &worker_addr->sin_addr, sizeof(to_worker.sin_addr));
-    to_worker.sin_port = htons(5);
+    to_worker.sin_port = htons(port);
+	
+	int listen_port = 100;
 
-    if(sendto(bcast_sock, &port, sizeof(int), 0, (struct sockaddr *)&to_worker, sizeof(struct sockaddr_in)) < 0)
+    if(sendto(bcast_sock, &listen_port, sizeof(int), 0, (struct sockaddr *)&to_worker, sizeof(struct sockaddr_in)) < 0)
         ERROR("sendto");
 
     if(close(bcast_sock))
