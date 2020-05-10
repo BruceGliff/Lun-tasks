@@ -85,7 +85,7 @@ void * acceptc (void * data)
 {
     pointery * p = (pointery *) data;
     while(1)
-    {       
+    {      
         int newSocket = accept(listen_sk, NULL, NULL);
         if (newSocket == -1)
             return NULL;

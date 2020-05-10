@@ -53,8 +53,31 @@ int work_with_task(int sk)
 {
     puts("Begin work with task");
     int th = GetCpuConfiguration();
+    fd_set readfd;
+    struct timeval to;
     while(1)
     {
+        to.tv_sec = 10;
+        to.tv_usec = 0;
+        
+        FD_ZERO(&readfd);
+        FD_SET(sk, &readfd);
+        int r = select(sk + 1, &readfd, NULL, NULL, &to);
+
+        if (r == -1)
+        {
+            perror("Connection lost select");
+            if (shutdown(sk, SHUT_RDWR) == -1)
+                ERROR("Err shutdown sk");
+            return 0;
+        }
+        if (r == 0)
+        {
+            perror("Timeout lost select");
+            if (shutdown(sk, SHUT_RDWR) == -1)
+                ERROR("Err shutdown sk");
+            return 0;
+        }
         Task t;
         int res = read(sk, &t, sizeof(Task));
         if (res != sizeof(Task))
