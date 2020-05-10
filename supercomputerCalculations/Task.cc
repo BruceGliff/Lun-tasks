@@ -15,10 +15,10 @@
 
 TasksQueue::TasksQueue(int fd) : pipe_fd(fd)
 {
-    tasks_count = 2000;
+    tasks_count = 500;
     in_queue = tasks_count;
-    begin = -10e6;
-    end   = 10e6;
+    begin = -10e5;
+    end   = 10e5;
     del = (end - begin) / tasks_count;
 
     pthread_mutex_init(&m_res, NULL);
