@@ -46,7 +46,7 @@ void * TaskSender(void * data)
             return NULL;
         }
 
-        to.tv_sec = 10;
+        to.tv_sec = 20;
         to.tv_usec = 0;
         
         FD_ZERO(&readfd);
