@@ -15,7 +15,7 @@
 
 TasksQueue::TasksQueue(int fd) : pipe_fd(fd)
 {
-    tasks_count = 500;
+    tasks_count = 100;
     in_queue = tasks_count;
     begin = -10e5;
     end   = 10e5;
