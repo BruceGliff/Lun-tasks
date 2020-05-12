@@ -57,7 +57,7 @@ int work_with_task(int sk)
     struct timeval to;
     while(1)
     {
-        to.tv_sec = 10;
+        to.tv_sec = 20;
         to.tv_usec = 0;
         
         FD_ZERO(&readfd);
