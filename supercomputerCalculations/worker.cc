@@ -22,37 +22,47 @@ void * broadcastToServer(void *);
 struct sockaddr rcvFromServer();
 int establishConnection(int port, struct sockaddr_in * server);
 int rcvPortFromServer(struct sockaddr_in * serv_addr);
-int work_with_task(int sk);
+int work_with_task(int sk, int th);
+int inputParser(int argc, char * argv);
 
 int broadcast_port = 0;
 
 int main(int argc, char ** argv)
 {
-	if (argc == 1)
-		broadcast_port = 5;
-	else
-		broadcast_port = strtol(argv[1], NULL, 10);
+    int threads_count = inputParser(argc, argv[1]);
+
+    if (argc < 3)
+	    broadcast_port = 5000;
+    else
+        broadcast_port = strtol(argv[2], NULL, 0);
+    
 
 	pthread_t broadcast_th;
 	if (pthread_create (&broadcast_th, NULL, broadcastToServer, NULL) == -1)
 		ERROR("Err create broadcast thread");
 	 
-//    broadcastToServer();
     struct sockaddr_in server;
     int port = rcvPortFromServer(&server);
     pthread_cancel(broadcast_th);
     int sk = establishConnection(port, &server);
-    work_with_task(sk);
+    work_with_task(sk, threads_count);
 
 
     
 }
 
+int inputParser(int argc, char * argv)
+{
+    if (argc == 1)
+        return 1;
+    else
+        return strtol(argv, NULL, 10);
+}
 
-int work_with_task(int sk)
+int work_with_task(int sk, int th)
 {
     puts("Begin work with task");
-    int th = GetCpuConfiguration();
+    GetCpuConfiguration();
     fd_set readfd;
     struct timeval to;
     while(1)
@@ -85,7 +95,7 @@ int work_with_task(int sk)
         printf("%f %f\n", t.begin, t.end);
         double ans = 5;
         
-        Task_local * TASK = Task_create(CPU_info, &t);
+        Task_local * TASK = Task_create(th, &t);
         
         Threads * THREAD =  Threads_create(TASK);
         ans = launch(THREAD, TASK);
@@ -108,6 +118,13 @@ int establishConnection(int port, struct sockaddr_in * server)
     int sk = socket(AF_INET, SOCK_STREAM, 0);
     if (sk < 0) 
         perror("ERROR opening socket");
+    int param = 1;
+    int ret = setsockopt(sk, SOL_SOCKET, SO_BROADCAST, &param, sizeof(int));
+    if (ret < 0)    
+        perror("Err setsockopt\n");
+    ret = setsockopt(sk, SOL_SOCKET, SO_REUSEADDR, &sk, sizeof(int));
+    if (ret < 0)    
+        ERROR("Err setsockopt\n");
 
 	struct sockaddr_in serverAddr;
 	serverAddr.sin_family = AF_INET;
@@ -115,7 +132,7 @@ int establishConnection(int port, struct sockaddr_in * server)
     serverAddr.sin_port = htons(port);
     
     if (connect(sk, (struct sockaddr *) &serverAddr, sizeof(serverAddr)) < 0) 
-        perror("ERROR connecting");
+        ERROR("ERROR connecting");
 
     puts("End establish connection");
 
@@ -127,15 +144,18 @@ void * broadcastToServer(void *)
     puts("Broadast begin");
 
     struct sockaddr_in ToServer;
-    int port = 101;
+    int port = 10100;
     int bcast_sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (bcast_sock < 0)
-        perror("cannot create sock for broadcast\n");
+        ERROR("cannot create sock for broadcast\n");
 
     int broadcastEnable = 1;
     int ret = setsockopt(bcast_sock, SOL_SOCKET, SO_BROADCAST, &broadcastEnable, sizeof(broadcastEnable));
     if (ret < 0)    
-        perror("cannot set up socket for broadcast\n");
+        ERROR("cannot set up socket for broadcast\n");
+    ret = setsockopt(bcast_sock, SOL_SOCKET, SO_REUSEADDR, &broadcastEnable, sizeof(broadcastEnable));
+    if (ret < 0)    
+        ERROR("Err setsockopt\n");
 
 
     ToServer.sin_family = AF_INET;
@@ -181,7 +201,7 @@ int rcvPortFromServer(struct sockaddr_in * serv_addr)
     if(bind(bcast_sock, (struct sockaddr *) &my_addr, sizeof(my_addr))==-1)
     {
             close(bcast_sock);
-            ERROR("Err bind, pls set new port (default 5)");
+            ERROR("Err bind, pls set new port (default 5000)");
     }
 
     int serv_port;

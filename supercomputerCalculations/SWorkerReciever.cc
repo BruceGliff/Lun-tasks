@@ -38,12 +38,14 @@ int rcvFromWorker(struct sockaddr_in * worker_addr)
     struct sockaddr_in serv_addr;
     socklen_t recaddrlen = sizeof(struct sockaddr_in);
 
-    int port = 101;
+    int port = 10100;
     int bcast_sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (bcast_sock < 0)
         ERROR("Err create broadcast socket")
     int broadcastEnable=1;
     if(setsockopt(bcast_sock,SOL_SOCKET,SO_BROADCAST,&broadcastEnable,sizeof(int)) == -1)
+        ERROR("Err set sockopt")
+    if(setsockopt(bcast_sock,SOL_SOCKET,SO_REUSEADDR,&broadcastEnable,sizeof(int)) == -1)
         ERROR("Err set sockopt")
 
     serv_addr.sin_family = AF_INET;
@@ -88,6 +90,8 @@ void SendPortToWorker(int port, struct sockaddr_in * worker_addr)
     int ret = setsockopt(bcast_sock, SOL_SOCKET, SO_BROADCAST, &broadcastEnable, sizeof(broadcastEnable));
     if (ret < 0)    
         ERROR("cannot set up socket for broadcast\n");
+    if(setsockopt(bcast_sock,SOL_SOCKET,SO_REUSEADDR,&broadcastEnable,sizeof(int)) == -1)
+        ERROR("Err set sockopt")
 
 
     struct sockaddr_in to_worker;
@@ -95,7 +99,7 @@ void SendPortToWorker(int port, struct sockaddr_in * worker_addr)
     memcpy(&to_worker.sin_addr, &worker_addr->sin_addr, sizeof(to_worker.sin_addr));
     to_worker.sin_port = htons(port);
 	
-	int listen_port = 100;
+	int listen_port = 10000;
 
     if(sendto(bcast_sock, &listen_port, sizeof(int), 0, (struct sockaddr *)&to_worker, sizeof(struct sockaddr_in)) < 0)
         ERROR("sendto");

@@ -6,7 +6,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string.h>
-#include<fcntl.h> 
+#include <fcntl.h> 
 
 #include "SWorkerReciever.h"
 #include "STaskSender.h"
@@ -42,7 +42,7 @@ int main()
 
 
     sockaddr_in worker_addr;
-    int port = 102;
+    int port = 10200;
 
     pthread_t th_queue[256];
 
@@ -53,7 +53,7 @@ int main()
     
     TasksQueue q(pipe_fd[1]);
 
-    listen_sk = establishConnection(100);
+    listen_sk = establishConnection(10000);
     listen(listen_sk, 256);
 
     double res = 0;
@@ -86,9 +86,13 @@ void * acceptc (void * data)
     pointery * p = (pointery *) data;
     while(1)
     {      
+        int param = 1;
         int newSocket = accept(listen_sk, NULL, NULL);
         if (newSocket == -1)
             return NULL;
+        int ret = setsockopt(newSocket, SOL_SOCKET, SO_REUSEADDR, &param, sizeof(int));
+        if (ret < 0)    
+            ERROR("Err setsockopt\n");
         pthread_mutex_lock(&mutex);
         ConnectionSettings set = {p->q, newSocket};
         if (pthread_create(&(p->t[free_indx++]), NULL, TaskSender, &set) != 0)
@@ -102,6 +106,10 @@ void * acceptc (void * data)
 int establishConnection(int port)
 {
     int sk = socket(AF_INET, SOCK_STREAM, 0);
+
+    int param = 1;
+    if (setsockopt(sk, SOL_SOCKET, SO_REUSEADDR, &param, sizeof(int)) < 0)
+        ERROR("Err setsockopt");
     sockaddr_in serv_addr;
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
