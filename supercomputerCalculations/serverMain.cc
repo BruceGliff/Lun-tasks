@@ -65,8 +65,7 @@ int main()
     int reslen = read(pipe_fd[0], &res, sizeof(double));
 
     pthread_mutex_lock(&mutex);
-    if (shutdown(listen_sk, SHUT_RDWR) == -1);
-        perror(0);
+    shutdown(listen_sk, SHUT_RDWR);
     close(listen_sk);
     close(pipe_fd[0]);
     pthread_cancel(acc);

@@ -35,7 +35,8 @@ int main(int argc, char ** argv)
 	    broadcast_port = 5000;
     else
         broadcast_port = strtol(argv[2], NULL, 0);
-    
+   if (broadcast_port < 1100)
+	  broadcast_port = 5001; 
 
 	pthread_t broadcast_th;
 	if (pthread_create (&broadcast_th, NULL, broadcastToServer, NULL) == -1)
