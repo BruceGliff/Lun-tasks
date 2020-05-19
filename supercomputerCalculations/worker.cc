@@ -193,6 +193,8 @@ int rcvPortFromServer(struct sockaddr_in * serv_addr)
     int broadcastEnable=1;
     if(setsockopt(bcast_sock,SOL_SOCKET,SO_BROADCAST,&broadcastEnable,sizeof(int)) == -1)
         ERROR("Err set sockopt")
+    if(setsockopt(bcast_sock,SOL_SOCKET,SO_REUSEADDR,&broadcastEnable,sizeof(int)) == -1)
+        ERROR("Err set sockopt")
 
     my_addr.sin_family = AF_INET;
     my_addr.sin_addr.s_addr = INADDR_ANY;
