@@ -24,10 +24,11 @@ void * reciever(void * data)
     int const size_addr = sizeof(struct sockaddr_in);
 
     int i = 0;
-    while(++i != 5)
+    while(1)
     {
         //int port = rcvFromWorker(&worker_addr);  
         SendPortToWorker(&worker_addr);
+        sleep(1);
     }
     return NULL;
 }
@@ -96,7 +97,7 @@ void SendPortToWorker(struct sockaddr_in * worker_addr)
 
     struct sockaddr_in to_worker;
     to_worker.sin_family = AF_INET;
-    to_worker.sin_addr.s_addr = INADDR_ANY;
+    to_worker.sin_addr.s_addr = INADDR_BROADCAST;
     to_worker.sin_port = htons(5000);
 	
 	int listen_port = 10000;
