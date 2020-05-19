@@ -16,19 +16,19 @@
 
 
 int rcvFromWorker(struct sockaddr_in * worker_addr);
-void SendPortToWorker(int port, struct sockaddr_in * worker_addr);
+void SendPortToWorker(struct sockaddr_in * worker_addr);
 
 void * reciever(void * data)
 { 
     struct sockaddr_in worker_addr;
     int const size_addr = sizeof(struct sockaddr_in);
 
-    while(1)
+    int i = 0;
+    while(++i != 5)
     {
-        int port = rcvFromWorker(&worker_addr);  
-        SendPortToWorker(port, &worker_addr);
+        //int port = rcvFromWorker(&worker_addr);  
+        SendPortToWorker(&worker_addr);
     }
-
     return NULL;
 }
 
@@ -78,9 +78,9 @@ int rcvFromWorker(struct sockaddr_in * worker_addr)
 }
 
 
-void SendPortToWorker(int port, struct sockaddr_in * worker_addr)
+void SendPortToWorker(struct sockaddr_in * worker_addr)
 {
-    puts("Sending begin...");
+    //puts("Sending begin...");
 
     int bcast_sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (bcast_sock < 0)
@@ -96,8 +96,8 @@ void SendPortToWorker(int port, struct sockaddr_in * worker_addr)
 
     struct sockaddr_in to_worker;
     to_worker.sin_family = AF_INET;
-    memcpy(&to_worker.sin_addr, &worker_addr->sin_addr, sizeof(to_worker.sin_addr));
-    to_worker.sin_port = htons(port);
+    to_worker.sin_addr.s_addr = INADDR_ANY;
+    to_worker.sin_port = htons(5000);
 	
 	int listen_port = 10000;
 
@@ -107,7 +107,7 @@ void SendPortToWorker(int port, struct sockaddr_in * worker_addr)
     if(close(bcast_sock))
         ERROR("close worker");
 
-    puts("Sending end");
+    //puts("Sending end");
 
     return;
 }

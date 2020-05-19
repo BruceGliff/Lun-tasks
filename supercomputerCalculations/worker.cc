@@ -31,20 +31,19 @@ int main(int argc, char ** argv)
 {
     int threads_count = inputParser(argc, argv[1]);
 
-    if (argc < 3)
-	    broadcast_port = 5000;
-    else
-        broadcast_port = strtol(argv[2], NULL, 0);
-   if (broadcast_port < 1100)
-	  broadcast_port = 5001; 
+    //if (argc < 3)
+	broadcast_port = 5000;
+    //else
+        //broadcast_port = strtol(argv[2], NULL, 0);
+   //if (broadcast_port < 1100)
+//	  broadcast_port = 5001; 
 
-	pthread_t broadcast_th;
-	if (pthread_create (&broadcast_th, NULL, broadcastToServer, NULL) == -1)
-		ERROR("Err create broadcast thread");
+	//pthread_t broadcast_th;
+	//if (pthread_create (&broadcast_th, NULL, broadcastToServer, NULL) == -1)
+		//ERROR("Err create broadcast thread");
 	 
     struct sockaddr_in server;
     int port = rcvPortFromServer(&server);
-    pthread_cancel(broadcast_th);
     int sk = establishConnection(port, &server);
     work_with_task(sk, threads_count);
 
