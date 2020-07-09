@@ -2,16 +2,16 @@
 #include <stdio.h>
 #include <signal.h>
 #include <unistd.h>
+#include <sys/prctl.h>
 
-#define CHARFULL SIGURG
-#define ANSWER SIGILL
+
+#define CHARFULL    SIGURG
+#define ANSWER      SIGHUP
+#define BIT0        SIGUSR1
+#define BIT1        SIGUSR2
+#define QUIT        SIGCHLD
 
 FILE * GetFile(int argc, char * argv[]);
-
-
-void voidD(int s)
-{
-}
 
 
 // Global part
@@ -19,174 +19,134 @@ int reader_pid; // child
 int writer_pid; // parent
 
 char c;
-int b;
+int bit;
+int upd_f;
 
 // HANDLERS
-void recieve1(int s)
+void void0(int s){}
+void Exit(int s) { exit(1); }
+void Recieve1(int s)
 {
-//puts("s");
-	c |= 1 << b;
-	b = (b + 1) % 8;
-	if (b)
-	{
+	c |= 1 << bit;
+	bit++;
 		kill(reader_pid, ANSWER);
-//puts("R");
-	}
-	else	
-		kill(writer_pid, CHARFULL);
 }
-void recieve0(int s)
+void Recieve0(int s)
 {
-//puts("s");
-	c |= 0 << b;
-	b = (b + 1) % 8;
-	if (b)
-	{
+	c |= 0 << bit;
+	bit++;
 		kill(reader_pid, ANSWER);
-//puts("R");
-	}
-	else	
-		kill(writer_pid, CHARFULL);
 }
-
-void exitH(int sig)
-{
-	exit(2);
-}
-
+void Update(int s)
+{ upd_f = 1; }
 
 
 int main(int argc, char * argv[])
 {
 	writer_pid = getpid();
+
+	sigset_t RecBit;
+	sigemptyset(&RecBit);
+	sigaddset(&RecBit, BIT0);
+	sigaddset(&RecBit, BIT1);
+	sigaddset(&RecBit, CHARFULL);
+	sigset_t _RecBit;
+	sigprocmask(SIG_BLOCK, &RecBit, &_RecBit);
 	
-	sigset_t WaitSignals;
-	sigfillset(&WaitSignals);
-	sigdelset(&WaitSignals, SIGUSR1);
-	sigdelset(&WaitSignals, SIGUSR2);
-	sigset_t _WaitSignals;
-	sigemptyset(&_WaitSignals);
-	sigaddset(&_WaitSignals, SIGUSR1);
-	sigaddset(&_WaitSignals, SIGUSR2);	
-	sigprocmask(SIG_BLOCK, &_WaitSignals, NULL);
+	struct sigaction Rec0_sa, Rec1_sa, upd_sa;
+	Rec0_sa.sa_handler = Recieve0;
+	Rec0_sa.sa_flags = SA_RESTART;
+	Rec1_sa.sa_flags = SA_RESTART;
+	Rec1_sa.sa_handler = Recieve1;
+	sigaction(BIT0, &Rec0_sa, NULL);
+	sigaction(BIT1, &Rec1_sa, NULL);
+	
+	struct sigaction Exit_sa; 
+	Exit_sa.sa_handler = Exit;
+	sigaction(QUIT, &Exit_sa, NULL);
 
-	// SIGCHILD
-	sigset_t ReadOverSet;
-	sigemptyset(&ReadOverSet);
-	sigaddset(&ReadOverSet, SIGCHLD);
-	struct sigaction Exit;
-	Exit.sa_handler = exitH;
-	sigaction(SIGCHLD, &Exit, NULL);
-		
-	struct sigaction Rec0, Rec1;
-	Rec0.sa_handler = recieve0;
-	Rec1.sa_handler = recieve1;
-	sigaction(SIGUSR1, &Rec0, NULL);
-	sigaction(SIGUSR2, &Rec1, NULL);
-
-	int fork_pid = fork();
+    	int fork_pid = fork();
 	if(fork_pid < 0)
 		exit(EXIT_FAILURE);
 
-	if (fork_pid)
+    	if (fork_pid)
 	{
-		// parent
-		reader_pid = fork_pid;
-		printf("par %d\n", writer_pid);
-	       	fflush(NULL);	
+		// parent WRITER
+        	reader_pid = fork_pid;
+		fflush(NULL);
+		upd_sa.sa_handler = Update;
+		upd_sa.sa_flags = SA_RESTART;
+		sigaction(CHARFULL, &upd_sa, NULL);
+
+		c = 0;
+		bit = 0;
+		upd_f = 0;
 
 
-		// preapre part
-		sigset_t CharFull;
-		sigfillset(&CharFull);
-		sigdelset(&CharFull, CHARFULL);
-	//	sigdelset(&CharFull, SIGUSR1);
-	//	sigdelset(&CharFull, SIGUSR2);
-		sigset_t _CharFull;
-		sigemptyset(&_CharFull);
-		sigaddset(&_CharFull, CHARFULL);
-
-
-
-//puts("Asd");
-		// wait
-		sigset_t any; sigemptyset(&any);
-		sigprocmask(SIG_UNBLOCK, &_WaitSignals, NULL);
-		sigsuspend(&any);
-//puts("Asd");
 		while(1)
 		{
-			sigsuspend(&CharFull);
-			printf("%c", c);
-			fflush(NULL);
-			c = 0;
-			sigprocmask(SIG_BLOCK, &_CharFull, NULL);
-			kill(reader_pid, ANSWER);
+			sigsuspend(&_RecBit);
+			if(upd_f)
+			{	
+				upd_f = 0;
+				printf("%c", c);
+				fflush(NULL);
+				c = 0;
+				bit = 0;
+				kill(reader_pid, ANSWER);
+			}
 		}
-
-
-		sigsuspend(&ReadOverSet);
-	}
+        
+    	}
 	else
 	{
-		// child
+		// child READER
+		prctl(PR_SET_PDEATHSIG, QUIT);	
 		reader_pid = getpid();
-		printf("child %d\n", reader_pid);
-	       	fflush(NULL);
+		fflush(NULL);
 
-		// prepare part
 		sigset_t Ans;
-		sigfillset(&Ans);
-		sigdelset(&Ans, ANSWER);
-		sigdelset(&Ans, SIGINT);
+		sigemptyset(&Ans);
+		sigaddset(&Ans, ANSWER);
+		struct sigaction ans_sa; ans_sa.sa_handler = void0;
+		ans_sa.sa_flags = SA_RESTART;
+		sigaction(ANSWER, &ans_sa, NULL);
 		sigset_t _Ans;
-		sigemptyset(&_Ans);
-		sigaddset(&_Ans, ANSWER);
-		struct sigaction sa;
-		sigemptyset(&sa.sa_mask);
-		sa.sa_flags = 0;
-		sa.sa_handler = voidD;
-		sigaction(ANSWER, &sa, NULL);
-	       	
-		sigprocmask(SIG_SETMASK, &_Ans, NULL);
+		sigprocmask(SIG_BLOCK, &Ans, &_Ans);
 
-		FILE * f = GetFile(argc, argv);
+       		FILE * f = GetFile(argc, argv);
 		if (!f)
+		{
+			puts("No file");
 			return -1;
+		}
 
-		char tmp = fgetc(f);
+		c = fgetc(f);
 
 		while(!feof(f))
 		{
-			int bit = 0;
+			bit = 0;
 			while(bit < 8)
 			{
-
-				if (tmp & (1 << bit))
+				if (c & (1 << bit))
 				{
 					bit++;
-					kill(writer_pid, SIGUSR2);
+					kill(writer_pid, BIT1);
 				}
 				else
 				{
 					bit++;
-					kill(writer_pid, SIGUSR1);
+					kill(writer_pid, BIT0);
 				}
-//puts("A");
-				sigsuspend(&Ans);
-//puts("V");
+				sigsuspend(&_Ans);
 			}
-			tmp = fgetc(f);
+               		kill(writer_pid, CHARFULL);
+			sigsuspend(&_Ans);
+			c = fgetc(f);
 		}
-puts("ASD");	
-		exit(1); // auto send SIGCHILD also READOVER
-	}
-
-
-
+    	}
 	return 0;
 }
-
 
 FILE * GetFile(int argc, char * argv[])
 {
@@ -207,5 +167,3 @@ FILE * GetFile(int argc, char * argv[])
 
     return text;
 }
-
-
