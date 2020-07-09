@@ -118,7 +118,6 @@ int main(int argc, char * argv[])
 	
 	int fd = open(argv[2], O_RDONLY);
 	if (fd == -1) {perror ("No file"); exit(1); }
-//printf("%d\n", fd);
 	buffer[0].fin = fd; // parent reads from stdout
 	buffer[n].fout = 1;
 
