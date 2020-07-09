@@ -1,7 +1,11 @@
 *ext.txt
 *.tr
 
+# Object
+*.o
+
 # Bimary
 *.out
-# vscode config
+
+# VScode config
 .vscode
