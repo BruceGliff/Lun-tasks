@@ -1,4 +1,7 @@
 *ext.txt
 *.tr
+
+# Bimary
 *.out
+# vscode config
 .vscode
