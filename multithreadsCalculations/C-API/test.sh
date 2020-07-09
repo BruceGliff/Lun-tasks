@@ -1,4 +1,5 @@
 #!/bin/bash
+# Script for launching programm multiple times with different number of threads
 
 for ((a = 1; a < 13; a++))
 do

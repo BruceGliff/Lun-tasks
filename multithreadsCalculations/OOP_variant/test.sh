@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# Launch program several times with different number of threads
 for ((a = 1; a < 13; a++))
 do
 	echo "Threads $a"

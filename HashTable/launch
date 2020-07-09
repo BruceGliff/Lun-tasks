@@ -1,1 +1,2 @@
-./program.out > out.out && gcov HashTable.c
+# Launch program and check coverage
+./program.out > dumpFromProgram.dump && gcov HashTable.c
